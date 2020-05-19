@@ -36,6 +36,8 @@ class Bin:
         self.depth = depth
         self.volume = self.width * self.height * self.depth
 
+    def get_volume(self):
+        return self.volume
 
 class PalletizationModel:
     def __init__(self, bin, boxList):
