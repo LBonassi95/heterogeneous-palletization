@@ -1,11 +1,32 @@
 import numpy as np
 
+
 class Box:
     def __init__(self, width, height, depth):
         self.width = width
         self.height = height
         self.depth = depth
         self.volume = self.width * self.height * self.depth
+        self.x = -1
+        self.y = -1
+        self.z = -1
+
+    def set_pos(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+    def get_pos(self):
+        return self.x, self.y, self.z
+
+    def get_end_x(self):
+        return self.x + self.width
+
+    def get_end_y(self):
+        return self.y + self.height
+
+    def get_end_z(self):
+        return self.z + self.depth
 
 
 class Bin:
