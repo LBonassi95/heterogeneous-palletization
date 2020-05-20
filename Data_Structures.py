@@ -186,6 +186,9 @@ class PalletizationModel:
         if box_set is None or len(box_set) == 0:
             return Point3D(0, 0, 0)
 
+        # must order the I set for future uses (in the for loop above)
+        box_set = self.order_box_set(box_set)
+
         T = [0]
         for box in box_set:
             T.append(box.get_end_z())
