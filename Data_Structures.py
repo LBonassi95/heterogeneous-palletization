@@ -92,7 +92,6 @@ class Point3D:
     def get_point(self):
         return self
 
-
 class Bin:
     def __init__(self, width, height, depth):
         self.width = width
@@ -114,152 +113,37 @@ class Bin:
 
 
 class PalletizationModel:
+
     def __init__(self, bin, boxList):
         self.boxList = boxList
         self.bin = bin
 
     def get_l1_bound(self):
-        return max(self.get_l1_w_h(), self.get_l1_h_d(), self.get_l1_w_d())
+        pass
 
-    # TODO refactor
     def get_l1_w_h(self):
         W = self.bin.width
         H = self.bin.height
         D = self.bin.depth
-        j_w_h = [box for box in self.boxList if (box.width >= W / 2) and (box.height >= H / 2)]
-        j_w_h_d = len([box for box in j_w_h if (box.depth > D / 2)])
+        j_w_h = [box for box in self.boxList if (box.width >= W/2) and (box.height >= H/2)]
+        j_w_h_d = len([box for box in j_w_h if (box.depth > D/2)])
         max_val = 0
-        for p in range(1, int(np.ceil(D / 2)) + 1):
-            Jl = [box for box in j_w_h if D - p >= box.depth > D / 2]
-            Js = [box for box in j_w_h if D / 2 >= box.depth >= p]
-            first_parameter = np.ceil(
-                (1 / D) * (np.sum([box.depth for box in Js]) - (len(Jl) * D - np.sum([box.depth for box in Jl]))))
-            second_parameter = np.ceil(
-                (len(Js) - (np.sum([np.floor((D - box.depth)/p) for box in Jl]))) / np.floor(D / p))
+        for p in range(1, int(np.ceil(D/2))+1):
+            Jl = [box for box in j_w_h if D-p >= box.depth > D/2]
+            Js = [box for box in j_w_h if D/2 >= box.depth >= p]
+            first_parameter = np.ceil((1/D)*(np.sum([box.depth for box in Js]) - (len(Jl)*D - np.sum([box.depth for box in Jl]))))
+            second_parameter = np.ceil((len(Js) - (len(Jl) * D - np.sum([np.floor(0.5*(D - box.depth)) for box in Jl]))) / np.floor(D / p))
             max_tmp = max(first_parameter, second_parameter)
             if max_val < max_tmp:
                 max_val = max_tmp
         return j_w_h_d + max_val
 
-    # TODO refactor
-    def get_l1_w_d(self):
-        W = self.bin.width
-        D = self.bin.depth
-        H = self.bin.height
-        j_w_d = [box for box in self.boxList if (box.width >= W / 2) and (box.depth >= D / 2)]
-        j_w_d_h = len([box for box in j_w_d if (box.height > H / 2)])
-        max_val = 0
-        for p in range(1, int(np.ceil(D / 2)) + 1):
-            Jl = [box for box in j_w_d if H - p >= box.height > H / 2]
-            Js = [box for box in j_w_d if H / 2 >= box.height >= p]
-            first_parameter = np.ceil(
-                (1 / H) * (np.sum([box.height for box in Js]) - (len(Jl) * H - np.sum([box.height for box in Jl]))))
-            second_parameter = np.ceil(
-                (len(Js) - (np.sum([np.floor((H - box.height)/p) for box in Jl]))) / np.floor(H / p))
-            max_tmp = max(first_parameter, second_parameter)
-            if max_val < max_tmp:
-                max_val = max_tmp
-        return j_w_d_h + max_val
-
-    # TODO refactor
-    def get_l1_h_d(self):
-        H = self.bin.height
-        D = self.bin.depth
-        W = self.bin.width
-        j_h_d = [box for box in self.boxList if (box.height >= H / 2) and (box.depth >= D / 2)]
-        j_h_d_w = len([box for box in j_h_d if (box.width > W / 2)])
-        max_val = 0
-        for p in range(1, int(np.ceil(D / 2)) + 1):
-            Jl = [box for box in j_h_d if W - p >= box.width > W / 2]
-            Js = [box for box in j_h_d if W / 2 >= box.width >= p]
-            first_parameter = np.ceil(
-                (1 / W) * (np.sum([box.width for box in Js]) - (len(Jl) * D - np.sum([box.width for box in Jl]))))
-            second_parameter = np.ceil(
-                (len(Js) - (np.sum([np.floor((W - box.width)/p) for box in Jl]))) / np.floor(W / p))
-            max_tmp = max(first_parameter, second_parameter)
-            if max_val < max_tmp:
-                max_val = max_tmp
-        return j_h_d_w + max_val
-
-    # TODO refactor
-    def get_l2_bound(self):
-        W = self.bin.width
-        H = self.bin.height
-        D = self.bin.depth
-        # TODO sta roba non è efficente dal punto di vista della memoria ma non risolve il problema del tempo
-        # TODO la metto apposto nel refactoring
-        l2_w_h = max([self.get_l2_w_h(p, q) for p in range(1, int(W/2) + 1)
-                      for q in range(1, int(H/2) + 1)])
-        l2_w_d = max([self.get_l2_w_d(p, q) for p in range(1, int(W/2) + 1)
-                      for q in range(1, int(D/2) + 1)])
-        l2_h_d = max([self.get_l2_h_d(p, q) for p in range(1, int(H/2) + 1)
-                      for q in range(1, int(D/2) + 1)])
-        return max(l2_w_h, l2_w_d, l2_h_d)
-
-    # TODO nei tre metodi successivi usare not in spreca tempo dato che fa una ricerca
-    # TODO sostituire con una lista dalla quale vengono rimosse mano a mano le scatole
-    # TODO sicuramente bisognera' usare una linked list o simile per eseguire la rimozione in concomitanza con l'iterazione
-
-    # TODO refactor
-    def get_l2_w_h(self, p, q):
-        W = self.bin.width
-        H = self.bin.height
-        D = self.bin.depth
-        assert 1 <= p <= W / 2
-        assert 1 <= q <= H / 2
-        Kv = [box for box in self.boxList
-              if (box.width > (W - p)) and (box.height > (H - q))]
-        Kl = [box for box in self.boxList
-              if (box not in Kv) and (box.width > W/2) and (box.height > H/2)]
-        Ks = [box for box in self.boxList
-              if (box not in (Kv+Kl)) and (box.width >= p) and (box.height >= q)]
-        alpha = sum(b.volume for b in (Kl+Ks))
-        beta = W * H * ((D * self.get_l1_w_h()) - sum(b.depth for b in Kv))
-        value = np.ceil((alpha - beta) / self.bin.get_volume())
-        return self.get_l1_w_h() + max(0, value)
-
-    # TODO refactor
-    def get_l2_w_d(self, p, q):
-        W = self.bin.width
-        D = self.bin.depth
-        H = self.bin.height
-        assert 1 <= p <= W / 2
-        assert 1 <= q <= D / 2
-        Kv = [box for box in self.boxList
-              if (box.width > (W - p)) and (box.depth > (D - q))]
-        Kl = [box for box in self.boxList
-              if (box not in Kv) and (box.width > W/2) and (box.depth > D/2)]
-        Ks = [box for box in self.boxList
-              if (box not in (Kv+Kl)) and (box.width >= p) and (box.depth >= q)]
-        alpha = sum(b.volume for b in (Kl + Ks))
-        beta = W * D * ((H * self.get_l1_w_d()) - sum(b.height for b in Kv))
-        value = np.ceil((alpha - beta) / self.bin.get_volume())
-        return self.get_l1_w_d() + max(0, value)
-
-    # TODO refactor
-    def get_l2_h_d(self, p, q):
-        W = self.bin.width
-        H = self.bin.height
-        D = self.bin.depth
-        assert 1 <= p <= H / 2
-        assert 1 <= q <= D / 2
-        Kv = [box for box in self.boxList
-              if (box.height > (H - p)) and (box.depth > (D - q))]
-        Kl = [box for box in self.boxList
-              if (box not in Kv) and (box.height > H/2) and (box.depth > H/2)]
-        Ks = [box for box in self.boxList
-              if (box not in (Kv+Kl)) and (box.height >= p) and (box.depth >= q)]
-        alpha = sum(b.volume for b in (Kl + Ks))
-        beta = H * D * ((W * self.get_l1_h_d()) - sum(b.width for b in Kv))
-        value = np.ceil((alpha - beta) / self.bin.get_volume())
-        return self.get_l1_h_d() + max(0, value)
-
-    # TODO refactor
     def order_box_set(self, box_set: [Box]):
         box_set = sorted(box_set, key=lambda box: box.get_end_x(), reverse=True)  # check if it works properly
-        box_set = sorted(box_set, key=lambda box: box.get_end_y(), reverse=True)  # check if it works properly
+        box_set = sorted(box_set, key=lambda box: box.get_end_y(), reverse=True) #check if it works properly
 
         return box_set
+
 
     def two_dimensional_corners(self, box_set: [Box], J: [Box], bin: Bin):
         if box_set is None or len(box_set) == 0:
@@ -277,7 +161,7 @@ class PalletizationModel:
         # determine the corner points
         corners = [Point2D(0, extreme_boxes[0].get_end_y())]
         for index in range(1, len(extreme_boxes)):
-            corners.append(Point2D(corners[index - 1].get_end_x(), extreme_boxes[index].get_end_y()))
+            corners.append(Point2D(corners[index-1].get_end_x(), extreme_boxes[index].get_end_y()))
         corners.append(Point2D(extreme_boxes[-1].get_end_x(), 0))
 
         # remove all infeasible corners
@@ -294,3 +178,45 @@ class PalletizationModel:
         for corner in corners:
             if (corner.get_x() + minimum_w) <= bin.get_width() and (corner.get_y() + minimum_h) <= bin.get_height():
                 final_corners.append(corner)
+
+        return final_corners
+
+
+    def three_dimensional_corners(self, box_set: [Box], J: [Box], bin: Bin):
+        if box_set is None or len(box_set) == 0:
+            return Point3D(0, 0, 0)
+
+        T = [0]
+        for box in box_set:
+            T.append(box.get_end_z())
+
+        T = sorted(T, reverse=False) # devo gestire casi di profondità doppie? non penso pero...
+
+        # find the minimum depth in the J boxes list
+        minimum_d = J[0].get_depth()
+        for box in J:
+            if box.get_depth() > minimum_d:
+                minimum_d = box.get_depth()
+
+        total_corners = []
+        incremental_corners = []
+        k = 0
+        for depth in T:
+            if depth + minimum_d > bin.get_depth():
+                break
+
+            I_k = [box for box in box_set if box.get_end_z() > depth]
+            incremental_corners.append(self.two_dimensional_corners(I_k, J, bin))
+
+            for point in incremental_corners[-1]:
+                found = False
+                for already_seen_point in incremental_corners[-2]:
+                    if point.get_x() == already_seen_point.get_x() and point.get_y() == already_seen_point.get_y():
+                        found = True
+                        break
+                if not found:
+                    total_corners.add(Point3D(point.get_x(), point.get_y(), depth))
+
+            k = k + 1
+
+        return total_corners
