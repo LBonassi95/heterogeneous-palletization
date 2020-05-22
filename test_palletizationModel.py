@@ -76,7 +76,6 @@ class TestPalletizationModel(TestCase):
 
     def test_get_l2_bound(self):
         model = get_random_model(100)
-        model.calculate_l1_bound()
         self.assertEqual(26, model.get_l2_bound())
 
     def test_get_l2_w_h(self):
@@ -85,7 +84,6 @@ class TestPalletizationModel(TestCase):
         p = 2
         q = 3
         model = ds.PalletizationModel(bin, boxlist)
-        model.calculate_l1_bound()
         self.assertEqual(2, model.get_l2_p_q(p,
                                              q,
                                              model.list_w_h,
@@ -100,7 +98,6 @@ class TestPalletizationModel(TestCase):
         p = 2
         q = 3
         model = ds.PalletizationModel(bin, boxlist)
-        model.calculate_l1_bound()
         self.assertEqual(3, model.get_l2_p_q(p,
                                              q,
                                              model.list_w_h,
@@ -115,7 +112,6 @@ class TestPalletizationModel(TestCase):
         p = 2
         q = 3
         model = ds.PalletizationModel(bin, boxlist)
-        model.calculate_l1_bound()
         self.assertEqual(3, model.get_l2_p_q(p,
                                              q,
                                              model.list_w_h,

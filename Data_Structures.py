@@ -128,6 +128,8 @@ class PalletizationModel:
         self.l1_h_d = None
         self.l1 = None
         self.l2 = None
+        self.calculate_l1_bound()
+        self.calculate_l2_bound()
 
     def calculate_l1_bound(self):
         W = self.bin.width
@@ -139,8 +141,6 @@ class PalletizationModel:
         self.l1 = max(self.l1_w_h, self.l1_w_d, self.l1_h_d)
 
     def get_l1_bound(self):
-        if self.l1_w_h is None and self.l1_w_h is None and self.l1_w_h is None and self.l1 is None:
-            self.calculate_l1_bound()
         return self.l1
 
     def get_l1_p_max(self, value_list, v1, v2, v3):
@@ -234,8 +234,6 @@ class PalletizationModel:
         self.l2 = max(l2_w_h, l2_w_d, l2_h_d)
 
     def get_l2_bound(self):
-        if self.l2 is None:
-            self.calculate_l2_bound()
         return self.l2
 
     def get_l2_p_q_max(self, p_array, q_array, value_list, v1, v2, v3, l1_val):
