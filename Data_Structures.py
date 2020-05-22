@@ -2,6 +2,7 @@ import numpy as np
 
 DEBUG = True
 
+
 class Box:
     def __init__(self, width, height, depth):
         self.width = width
@@ -93,6 +94,7 @@ class Point3D:
     def get_point(self):
         return self
 
+
 class Bin:
     def __init__(self, width, height, depth):
         self.width = width
@@ -125,6 +127,7 @@ class PalletizationModel:
         self.l1_w_d = None
         self.l1_h_d = None
         self.l1 = None
+        self.l2 = None
 
     def calculate_l1_bound(self):
         W = self.bin.width
@@ -209,8 +212,7 @@ class PalletizationModel:
     #     max_val = max(first_parameter, second_parameter)
     #     return j_h_d_w + max_val
 
-    # TODO refactor
-    def get_l2_bound(self):
+    def calculate_l2_bound(self):
         W = self.bin.width
         H = self.bin.height
         D = self.bin.depth
@@ -218,85 +220,95 @@ class PalletizationModel:
         height_values = []
         depth_values = []
         for box in self.boxList:
-            if box.width not in width_values and box.width <= W/2:
+            if box.width not in width_values and box.width <= W / 2:
                 width_values.append(box.width)
-            if box.height not in height_values and box.height <= H/2:
+            if box.height not in height_values and box.height <= H / 2:
                 height_values.append(box.height)
-            if box.depth not in depth_values and box.depth <= D/2:
+            if box.depth not in depth_values and box.depth <= D / 2:
                 depth_values.append(box.depth)
         if len(width_values) == 0 or len(height_values) == 0 or len(depth_values) == 0:
             return self.get_l1_bound()
-        l2_w_h = max([self.get_l2_w_h(p, q) for p in width_values
-                      for q in height_values])
-        l2_w_d = max([self.get_l2_w_d(p, q) for p in width_values
-                      for q in depth_values])
-        l2_h_d = max([self.get_l2_h_d(p, q) for p in height_values
-                      for q in depth_values])
-        return max(l2_w_h, l2_w_d, l2_h_d)
+        l2_w_h = self.get_l2_p_q_max(width_values, height_values, self.list_w_h, W, H, D, self.l1_w_h)
+        l2_w_d = self.get_l2_p_q_max(width_values, depth_values, self.list_w_d, W, D, H, self.l1_w_d)
+        l2_h_d = self.get_l2_p_q_max(height_values, depth_values, self.list_h_d, H, D, W, self.l1_h_d)
+        self.l2 = max(l2_w_h, l2_w_d, l2_h_d)
 
-    # TODO nei tre metodi successivi usare not in spreca tempo dato che fa una ricerca
-    # TODO riempire le 3 liste in concomitanza (da fare nel refactoring)
+    def get_l2_bound(self):
+        if self.l2 is None:
+            self.calculate_l2_bound()
+        return self.l2
 
-    # TODO refactor
-    def get_l2_w_h(self, p, q):
-        W = self.bin.width
-        H = self.bin.height
-        D = self.bin.depth
-        assert 1 <= p <= W / 2
-        assert 1 <= q <= H / 2
-        Kv = [box for box in self.boxList
-              if (box.width > (W - p)) and (box.height > (H - q))]
-        Kl = [box for box in self.boxList
-              if (box not in Kv) and (box.width > W / 2) and (box.height > H / 2)]
-        Ks = [box for box in self.boxList
-              if (box not in (Kv + Kl)) and (box.width >= p) and (box.height >= q)]
-        alpha = sum(b.volume for b in (Kl + Ks))
-        beta = W * H * ((D * self.l1_w_h) - sum(b.depth for b in Kv))
+    def get_l2_p_q_max(self, p_array, q_array, value_list, v1, v2, v3, l1_val):
+        return max([self.get_l2_p_q(p, q, value_list, v1, v2, v3, l1_val) for p in p_array for q in q_array])
+
+    def get_l2_p_q(self, p, q, value_list, v1, v2, v3, l1_val):
+        Kv = [box for box in value_list
+              if (box[0] > (v1 - p)) and (box[1] > (v2 - q))]
+        Kl = [box for box in value_list
+              if (box not in Kv) and (box[0] > v1 / 2) and (box[1] > v2 / 2)]
+        Ks = [box for box in value_list
+              if (box not in (Kv + Kl)) and (box[0] >= p) and (box[1] >= q)]
+        alpha = sum(b[0] * b[1] * b[2] for b in (Kl + Ks))
+        beta = v1 * v2 * ((v3 * l1_val) - sum(b[2] for b in Kv))
         value = np.ceil((alpha - beta) / self.bin.get_volume())
-        return self.l1_w_h + max(0, value)
+        return l1_val + max(0, value)
 
-    # TODO refactor
-    def get_l2_w_d(self, p, q):
-        W = self.bin.width
-        D = self.bin.depth
-        H = self.bin.height
-        assert 1 <= p <= W / 2
-        assert 1 <= q <= D / 2
-        Kv = [box for box in self.boxList
-              if (box.width > (W - p)) and (box.depth > (D - q))]
-        Kl = [box for box in self.boxList
-              if (box not in Kv) and (box.width > W / 2) and (box.depth > D / 2)]
-        Ks = [box for box in self.boxList
-              if (box not in (Kv + Kl)) and (box.width >= p) and (box.depth >= q)]
-        alpha = sum(b.volume for b in (Kl + Ks))
-        beta = W * D * ((H * self.l1_w_d) - sum(b.height for b in Kv))
-        value = np.ceil((alpha - beta) / self.bin.get_volume())
-        return self.l1_w_d + max(0, value)
-
-    # TODO refactor
-    def get_l2_h_d(self, p, q):
-        W = self.bin.width
-        H = self.bin.height
-        D = self.bin.depth
-        assert 1 <= p <= H / 2
-        assert 1 <= q <= D / 2
-        Kv = [box for box in self.boxList
-              if (box.height > (H - p)) and (box.depth > (D - q))]
-        Kl = [box for box in self.boxList
-              if (box not in Kv) and (box.height > H / 2) and (box.depth > H / 2)]
-        Ks = [box for box in self.boxList
-              if (box not in (Kv + Kl)) and (box.height >= p) and (box.depth >= q)]
-        alpha = sum(b.volume for b in (Kl + Ks))
-        beta = H * D * ((W * self.l1_h_d) - sum(b.width for b in Kv))
-        value = np.ceil((alpha - beta) / self.bin.get_volume())
-        return self.l1_h_d + max(0, value)
+    # def get_l2_w_h(self, p, q):
+    #     W = self.bin.width
+    #     H = self.bin.height
+    #     D = self.bin.depth
+    #     assert 1 <= p <= W / 2
+    #     assert 1 <= q <= H / 2
+    #     Kv = [box for box in self.boxList
+    #           if (box.width > (W - p)) and (box.height > (H - q))]
+    #     Kl = [box for box in self.boxList
+    #           if (box not in Kv) and (box.width > W / 2) and (box.height > H / 2)]
+    #     Ks = [box for box in self.boxList
+    #           if (box not in (Kv + Kl)) and (box.width >= p) and (box.height >= q)]
+    #     alpha = sum(b.volume for b in (Kl + Ks))
+    #     beta = W * H * ((D * self.l1_w_h) - sum(b.depth for b in Kv))
+    #     value = np.ceil((alpha - beta) / self.bin.get_volume())
+    #     return self.l1_w_h + max(0, value)
+    #
+    # def get_l2_w_d(self, p, q):
+    #     W = self.bin.width
+    #     D = self.bin.depth
+    #     H = self.bin.height
+    #     assert 1 <= p <= W / 2
+    #     assert 1 <= q <= D / 2
+    #     Kv = [box for box in self.boxList
+    #           if (box.width > (W - p)) and (box.depth > (D - q))]
+    #     Kl = [box for box in self.boxList
+    #           if (box not in Kv) and (box.width > W / 2) and (box.depth > D / 2)]
+    #     Ks = [box for box in self.boxList
+    #           if (box not in (Kv + Kl)) and (box.width >= p) and (box.depth >= q)]
+    #     alpha = sum(b.volume for b in (Kl + Ks))
+    #     beta = W * D * ((H * self.l1_w_d) - sum(b.height for b in Kv))
+    #     value = np.ceil((alpha - beta) / self.bin.get_volume())
+    #     return self.l1_w_d + max(0, value)
+    #
+    # def get_l2_h_d(self, p, q):
+    #     W = self.bin.width
+    #     H = self.bin.height
+    #     D = self.bin.depth
+    #     assert 1 <= p <= H / 2
+    #     assert 1 <= q <= D / 2
+    #     Kv = [box for box in self.boxList
+    #           if (box.height > (H - p)) and (box.depth > (D - q))]
+    #     Kl = [box for box in self.boxList
+    #           if (box not in Kv) and (box.height > H / 2) and (box.depth > H / 2)]
+    #     Ks = [box for box in self.boxList
+    #           if (box not in (Kv + Kl)) and (box.height >= p) and (box.depth >= q)]
+    #     alpha = sum(b.volume for b in (Kl + Ks))
+    #     beta = H * D * ((W * self.l1_h_d) - sum(b.width for b in Kv))
+    #     value = np.ceil((alpha - beta) / self.bin.get_volume())
+    #     return self.l1_h_d + max(0, value)
 
     def order_box_set(self, box_set: [Box]):
         box_set = sorted(box_set, key=lambda box: box.get_end_x(), reverse=True)  # check if it works properly
-        box_set = sorted(box_set, key=lambda box: box.get_end_y(), reverse=True) #check if it works properly
+        box_set = sorted(box_set, key=lambda box: box.get_end_y(), reverse=True)  # check if it works properly
 
         return box_set
-
 
     def two_dimensional_corners(self, box_set: [Box], J: [Box], bin: Bin):
         if box_set is None or len(box_set) == 0:
@@ -314,7 +326,7 @@ class PalletizationModel:
         # determine the corner points
         corners = [Point2D(0, extreme_boxes[0].get_end_y())]
         for index in range(1, len(extreme_boxes)):
-            corners.append(Point2D(corners[index-1].get_end_x(), extreme_boxes[index].get_end_y()))
+            corners.append(Point2D(corners[index - 1].get_end_x(), extreme_boxes[index].get_end_y()))
         corners.append(Point2D(extreme_boxes[-1].get_end_x(), 0))
 
         # remove all infeasible corners
@@ -334,7 +346,6 @@ class PalletizationModel:
 
         return final_corners
 
-
     def three_dimensional_corners(self, box_set: [Box], J: [Box], bin: Bin):
         if box_set is None or len(box_set) == 0:
             return Point3D(0, 0, 0)
@@ -346,7 +357,7 @@ class PalletizationModel:
         for box in box_set:
             T.append(box.get_end_z())
 
-        T = sorted(T, reverse=False) # devo gestire casi di profondità doppie? non penso pero...
+        T = sorted(T, reverse=False)  # devo gestire casi di profondità doppie? non penso pero...
 
         # find the minimum depth in the J boxes list
         minimum_d = J[0].get_depth()

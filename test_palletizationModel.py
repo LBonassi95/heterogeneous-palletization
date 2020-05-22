@@ -86,7 +86,13 @@ class TestPalletizationModel(TestCase):
         q = 3
         model = ds.PalletizationModel(bin, boxlist)
         model.calculate_l1_bound()
-        self.assertEqual(2, model.get_l2_w_h(p, q))
+        self.assertEqual(2, model.get_l2_p_q(p,
+                                             q,
+                                             model.list_w_h,
+                                             model.bin.width,
+                                             model.bin.height,
+                                             model.bin.depth,
+                                             model.l1_w_h))
 
     def test_get_l2_w_d(self):
         boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
@@ -95,7 +101,13 @@ class TestPalletizationModel(TestCase):
         q = 3
         model = ds.PalletizationModel(bin, boxlist)
         model.calculate_l1_bound()
-        self.assertEqual(3, model.get_l2_w_d(p, q))
+        self.assertEqual(3, model.get_l2_p_q(p,
+                                             q,
+                                             model.list_w_h,
+                                             model.bin.width,
+                                             model.bin.depth,
+                                             model.bin.height,
+                                             model.l1_w_d))
 
     def test_get_l2_h_d(self):
         boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
@@ -104,7 +116,13 @@ class TestPalletizationModel(TestCase):
         q = 3
         model = ds.PalletizationModel(bin, boxlist)
         model.calculate_l1_bound()
-        self.assertEqual(3, model.get_l2_h_d(p, q))
+        self.assertEqual(3, model.get_l2_p_q(p,
+                                             q,
+                                             model.list_w_h,
+                                             model.bin.height,
+                                             model.bin.depth,
+                                             model.bin.width,
+                                             model.l1_h_d))
 
     # def test_two_dimensional_corners(self):
     #     self.fail()
