@@ -119,66 +119,60 @@ class PalletizationModel:
         self.bin = bin
 
     def get_l1_bound(self):
+        W = self.bin.width
+        H = self.bin.height
+        D = self.bin.depth
+        l1_w_h = max([self.get_l1_w_h(p) for p in range(1, int(np.ceil(D / 2)) + 1)])
+        l1_w_d = max([self.get_l1_w_h(p) for p in range(1, int(np.ceil(H / 2)) + 1)])
+        l1_h_d = max([self.get_l1_w_h(p) for p in range(1, int(np.ceil(W / 2)) + 1)])
         return max(self.get_l1_w_h(), self.get_l1_h_d(), self.get_l1_w_d())
 
     # TODO refactor
-    def get_l1_w_h(self):
+    def get_l1_w_h(self, p):
         W = self.bin.width
         H = self.bin.height
         D = self.bin.depth
         j_w_h = [box for box in self.boxList if (box.width >= W / 2) and (box.height >= H / 2)]
         j_w_h_d = len([box for box in j_w_h if (box.depth > D / 2)])
-        max_val = 0
-        for p in range(1, int(np.ceil(D / 2)) + 1):
-            Jl = [box for box in j_w_h if D - p >= box.depth > D / 2]
-            Js = [box for box in j_w_h if D / 2 >= box.depth >= p]
-            first_parameter = np.ceil(
-                (1 / D) * (np.sum([box.depth for box in Js]) - (len(Jl) * D - np.sum([box.depth for box in Jl]))))
-            second_parameter = np.ceil(
-                (len(Js) - (np.sum([np.floor((D - box.depth) / p) for box in Jl]))) / np.floor(D / p))
-            max_tmp = max(first_parameter, second_parameter)
-            if max_val < max_tmp:
-                max_val = max_tmp
+        Jl = [box for box in j_w_h if D - p >= box.depth > D / 2]
+        Js = [box for box in j_w_h if D / 2 >= box.depth >= p]
+        first_parameter = np.ceil(
+            (1 / D) * (np.sum([box.depth for box in Js]) - (len(Jl) * D - np.sum([box.depth for box in Jl]))))
+        second_parameter = np.ceil(
+            (len(Js) - (np.sum([np.floor((D - box.depth) / p) for box in Jl]))) / np.floor(D / p))
+        max_val = max(first_parameter, second_parameter)
         return j_w_h_d + max_val
 
     # TODO refactor
-    def get_l1_w_d(self):
+    def get_l1_w_d(self, p):
         W = self.bin.width
         D = self.bin.depth
         H = self.bin.height
         j_w_d = [box for box in self.boxList if (box.width >= W / 2) and (box.depth >= D / 2)]
         j_w_d_h = len([box for box in j_w_d if (box.height > H / 2)])
-        max_val = 0
-        for p in range(1, int(np.ceil(D / 2)) + 1):
-            Jl = [box for box in j_w_d if H - p >= box.height > H / 2]
-            Js = [box for box in j_w_d if H / 2 >= box.height >= p]
-            first_parameter = np.ceil(
-                (1 / H) * (np.sum([box.height for box in Js]) - (len(Jl) * H - np.sum([box.height for box in Jl]))))
-            second_parameter = np.ceil(
-                (len(Js) - (np.sum([np.floor((H - box.height) / p) for box in Jl]))) / np.floor(H / p))
-            max_tmp = max(first_parameter, second_parameter)
-            if max_val < max_tmp:
-                max_val = max_tmp
+        Jl = [box for box in j_w_d if H - p >= box.height > H / 2]
+        Js = [box for box in j_w_d if H / 2 >= box.height >= p]
+        first_parameter = np.ceil(
+            (1 / H) * (np.sum([box.height for box in Js]) - (len(Jl) * H - np.sum([box.height for box in Jl]))))
+        second_parameter = np.ceil(
+            (len(Js) - (np.sum([np.floor((H - box.height) / p) for box in Jl]))) / np.floor(H / p))
+        max_val = max(first_parameter, second_parameter)
         return j_w_d_h + max_val
 
     # TODO refactor
-    def get_l1_h_d(self):
+    def get_l1_h_d(self, p):
         H = self.bin.height
         D = self.bin.depth
         W = self.bin.width
         j_h_d = [box for box in self.boxList if (box.height >= H / 2) and (box.depth >= D / 2)]
         j_h_d_w = len([box for box in j_h_d if (box.width > W / 2)])
-        max_val = 0
-        for p in range(1, int(np.ceil(D / 2)) + 1):
-            Jl = [box for box in j_h_d if W - p >= box.width > W / 2]
-            Js = [box for box in j_h_d if W / 2 >= box.width >= p]
-            first_parameter = np.ceil(
-                (1 / W) * (np.sum([box.width for box in Js]) - (len(Jl) * D - np.sum([box.width for box in Jl]))))
-            second_parameter = np.ceil(
-                (len(Js) - (np.sum([np.floor((W - box.width) / p) for box in Jl]))) / np.floor(W / p))
-            max_tmp = max(first_parameter, second_parameter)
-            if max_val < max_tmp:
-                max_val = max_tmp
+        Jl = [box for box in j_h_d if W - p >= box.width > W / 2]
+        Js = [box for box in j_h_d if W / 2 >= box.width >= p]
+        first_parameter = np.ceil(
+            (1 / W) * (np.sum([box.width for box in Js]) - (len(Jl) * W - np.sum([box.width for box in Jl]))))
+        second_parameter = np.ceil(
+            (len(Js) - (np.sum([np.floor((W - box.width) / p) for box in Jl]))) / np.floor(W / p))
+        max_val = max(first_parameter, second_parameter)
         return j_h_d_w + max_val
 
     # TODO refactor
