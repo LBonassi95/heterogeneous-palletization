@@ -125,7 +125,7 @@ class PalletizationModel:
         l1_w_h = max([self.get_l1_w_h(p) for p in range(1, int(np.ceil(D / 2)) + 1)])
         l1_w_d = max([self.get_l1_w_h(p) for p in range(1, int(np.ceil(H / 2)) + 1)])
         l1_h_d = max([self.get_l1_w_h(p) for p in range(1, int(np.ceil(W / 2)) + 1)])
-        return max(self.get_l1_w_h(), self.get_l1_h_d(), self.get_l1_w_d())
+        return max(l1_w_h, l1_w_d, l1_h_d)
 
     # TODO refactor
     def get_l1_w_h(self, p):
