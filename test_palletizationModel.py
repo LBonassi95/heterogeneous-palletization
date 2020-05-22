@@ -75,16 +75,36 @@ class TestPalletizationModel(TestCase):
         self.assertEqual(2, model.get_l1_p(p, value_list, bin.height, bin.depth, bin.width))
 
     def test_get_l2_bound(self):
-        self.fail()
+        model = get_random_model(100)
+        model.calculate_l1_bound()
+        self.assertEqual(26, model.get_l2_bound())
 
     def test_get_l2_w_h(self):
-        self.fail()
+        boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
+        bin = ds.Bin(6, 7, 8)
+        p = 2
+        q = 3
+        model = ds.PalletizationModel(bin, boxlist)
+        model.calculate_l1_bound()
+        self.assertEqual(2, model.get_l2_w_h(p, q))
 
     def test_get_l2_w_d(self):
-        self.fail()
+        boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
+        bin = ds.Bin(6, 7, 8)
+        p = 2
+        q = 3
+        model = ds.PalletizationModel(bin, boxlist)
+        model.calculate_l1_bound()
+        self.assertEqual(3, model.get_l2_w_d(p, q))
 
     def test_get_l2_h_d(self):
-        self.fail()
+        boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
+        bin = ds.Bin(6, 7, 8)
+        p = 2
+        q = 3
+        model = ds.PalletizationModel(bin, boxlist)
+        model.calculate_l1_bound()
+        self.assertEqual(3, model.get_l2_h_d(p, q))
 
     # def test_two_dimensional_corners(self):
     #     self.fail()

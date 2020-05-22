@@ -118,18 +118,27 @@ class PalletizationModel:
     def __init__(self, bin, boxList):
         self.boxList = boxList
         self.bin = bin
+        self.list_w_h = [[box.width, box.height, box.depth] for box in self.boxList]
+        self.list_w_d = [[box.width, box.depth, box.height] for box in self.boxList]
+        self.list_h_d = [[box.height, box.depth, box.width] for box in self.boxList]
+        self.l1_w_h = None
+        self.l1_w_d = None
+        self.l1_h_d = None
+        self.l1 = None
 
-    def get_l1_bound(self):
+    def calculate_l1_bound(self):
         W = self.bin.width
         H = self.bin.height
         D = self.bin.depth
-        list_w_h = [[box.width, box.height, box.depth] for box in self.boxList]
-        list_w_d = [[box.width, box.depth, box.height] for box in self.boxList]
-        list_h_d = [[box.height, box.depth, box.width] for box in self.boxList]
-        max_w_h = self.get_l1_p_max(list_w_h, W, H, D)
-        max_w_d = self.get_l1_p_max(list_w_d, W, D, H)
-        max_h_d = self.get_l1_p_max(list_h_d, H, D, W)
-        return max(max_w_h, max_w_d, max_h_d)
+        self.l1_w_h = self.get_l1_p_max(self.list_w_h, W, H, D)
+        self.l1_w_d = self.get_l1_p_max(self.list_w_d, W, D, H)
+        self.l1_h_d = self.get_l1_p_max(self.list_h_d, H, D, W)
+        self.l1 = max(self.l1_w_h, self.l1_w_d, self.l1_h_d)
+
+    def get_l1_bound(self):
+        if self.l1_w_h is None and self.l1_w_h is None and self.l1_w_h is None and self.l1 is None:
+            self.calculate_l1_bound()
+        return self.l1
 
     def get_l1_p_max(self, value_list, v1, v2, v3):
         return max([self.get_l1_p(p, value_list, v1, v2, v3) for p in range(1, int(np.ceil(v3 / 2)) + 1)])
@@ -242,9 +251,9 @@ class PalletizationModel:
         Ks = [box for box in self.boxList
               if (box not in (Kv + Kl)) and (box.width >= p) and (box.height >= q)]
         alpha = sum(b.volume for b in (Kl + Ks))
-        beta = W * H * ((D * self.get_l1_w_h()) - sum(b.depth for b in Kv))
+        beta = W * H * ((D * self.l1_w_h) - sum(b.depth for b in Kv))
         value = np.ceil((alpha - beta) / self.bin.get_volume())
-        return self.get_l1_w_h() + max(0, value)
+        return self.l1_w_h + max(0, value)
 
     # TODO refactor
     def get_l2_w_d(self, p, q):
@@ -260,9 +269,9 @@ class PalletizationModel:
         Ks = [box for box in self.boxList
               if (box not in (Kv + Kl)) and (box.width >= p) and (box.depth >= q)]
         alpha = sum(b.volume for b in (Kl + Ks))
-        beta = W * D * ((H * self.get_l1_w_d()) - sum(b.height for b in Kv))
+        beta = W * D * ((H * self.l1_w_d) - sum(b.height for b in Kv))
         value = np.ceil((alpha - beta) / self.bin.get_volume())
-        return self.get_l1_w_d() + max(0, value)
+        return self.l1_w_d + max(0, value)
 
     # TODO refactor
     def get_l2_h_d(self, p, q):
@@ -278,9 +287,9 @@ class PalletizationModel:
         Ks = [box for box in self.boxList
               if (box not in (Kv + Kl)) and (box.height >= p) and (box.depth >= q)]
         alpha = sum(b.volume for b in (Kl + Ks))
-        beta = H * D * ((W * self.get_l1_h_d()) - sum(b.width for b in Kv))
+        beta = H * D * ((W * self.l1_h_d) - sum(b.width for b in Kv))
         value = np.ceil((alpha - beta) / self.bin.get_volume())
-        return self.get_l1_h_d() + max(0, value)
+        return self.l1_h_d + max(0, value)
 
     def order_box_set(self, box_set: [Box]):
         box_set = sorted(box_set, key=lambda box: box.get_end_x(), reverse=True)  # check if it works properly
