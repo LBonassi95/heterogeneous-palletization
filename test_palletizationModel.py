@@ -1,5 +1,12 @@
 from unittest import TestCase
 import Data_Structures as ds
+import random
+
+
+def get_random_model(num_of_boxes):
+    random.seed(47)
+    boxList = [ds.Box(float(random.randint(1, 10)), float(random.randint(1, 10)), float(random.randint(1, 10))) for i in range(num_of_boxes)]
+    return ds.PalletizationModel(ds.Bin(10, 10, 10), boxList)
 
 
 class TestPalletizationModel(TestCase):
@@ -9,7 +16,8 @@ class TestPalletizationModel(TestCase):
         bin = ds.Bin(10, 10, 10)
         model = ds.PalletizationModel(bin, boxlist)
         self.assertEqual(3, model.get_l1_bound())
-
+        model = get_random_model(100)
+        self.assertEqual(24, model.get_l1_bound())
 
     def test_get_l1_w_h(self):
         ############################################################

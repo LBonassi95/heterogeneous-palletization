@@ -16,8 +16,9 @@ def get_fixed_model(num_of_boxes):
 
 if __name__ == '__main__':
     model = get_random_model(100)
-    l1 = model.get_l1_bound()
+    l1 = model.get_l1_bound_old()
     print(l1)
+    print(model.get_l1_bound())
     # l2 = model.get_l2_bound()
     # print(l2)
 
