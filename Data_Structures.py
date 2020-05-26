@@ -131,6 +131,9 @@ class PalletizationModel:
         self.calculate_l1_bound()
         self.calculate_l2_bound()
 
+    def get_bin(self):
+        return self.bin
+
     def calculate_l1_bound(self):
         W = self.bin.width
         H = self.bin.height
@@ -310,7 +313,7 @@ class PalletizationModel:
 
     def two_dimensional_corners(self, box_set: [Box], J: [Box], bin: Bin):
         if box_set is None or len(box_set) == 0:
-            return Point2D(0, 0)
+            return [Point2D(0, 0)]
 
         # must identify the extreme boxes
         border = 0
@@ -324,7 +327,7 @@ class PalletizationModel:
         # determine the corner points
         corners = [Point2D(0, extreme_boxes[0].get_end_y())]
         for index in range(1, len(extreme_boxes)):
-            corners.append(Point2D(corners[index - 1].get_end_x(), extreme_boxes[index].get_end_y()))
+            corners.append(Point2D(extreme_boxes[index - 1].get_end_x(), extreme_boxes[index].get_end_y()))
         corners.append(Point2D(extreme_boxes[-1].get_end_x(), 0))
 
         # remove all infeasible corners
@@ -346,7 +349,7 @@ class PalletizationModel:
 
     def three_dimensional_corners(self, box_set: [Box], J: [Box], bin: Bin):
         if box_set is None or len(box_set) == 0:
-            return Point3D(0, 0, 0)
+            return [Point3D(0, 0, 0)]
 
         # must order the I set for future uses (in the for loop above)
         box_set = self.order_box_set(box_set)
@@ -355,7 +358,7 @@ class PalletizationModel:
         for box in box_set:
             T.append(box.get_end_z())
 
-        T = sorted(T, reverse=False)  # devo gestire casi di profondità doppie? non penso pero...
+        T = sorted(T, reverse=False)  # devo gestire casi di profondità doppie? non penso però...
 
         # find the minimum depth in the J boxes list
         minimum_d = J[0].get_depth()
@@ -375,12 +378,13 @@ class PalletizationModel:
 
             for point in incremental_corners[-1]:
                 found = False
-                for already_seen_point in incremental_corners[-2]:
-                    if point.get_x() == already_seen_point.get_x() and point.get_y() == already_seen_point.get_y():
-                        found = True
-                        break
+                if len(incremental_corners) > 1:
+                    for already_seen_point in incremental_corners[-2]:
+                        if point.get_x() == already_seen_point.get_x() and point.get_y() == already_seen_point.get_y():
+                            found = True
+                            break
                 if not found:
-                    total_corners.add(Point3D(point.get_x(), point.get_y(), depth))
+                    total_corners.append(Point3D(point.get_x(), point.get_y(), depth))
 
             k = k + 1
 
