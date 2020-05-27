@@ -11,6 +11,48 @@ def get_random_model(num_of_boxes):
 
 class TestPalletizationModel(TestCase):
 
+    def test_2d_ordering(self):
+        boxList = [ds.Box(70, 70, 70) for i in range(5)]  # scatole già posizionate
+        boxList.append(ds.Box(100, 70, 23))
+        J = [ds.Box(1, 2, 1) for i in range(3)]  # scatole che vorrei mettere
+
+        palletModel = ds.PalletizationModel(ds.Bin(1000.0, 1000.0, 1000.0), boxList)
+
+        # posiziono lo scatele
+        boxList[0].set_pos(0, 0, 0)
+        boxList[1].set_pos(70, 0, 0)
+        boxList[2].set_pos(140, 0, 0)
+        boxList[3].set_pos(0, 70, 0)
+        boxList[4].set_pos(70, 70, 0)
+        boxList[5].set_pos(0, 70, 70)
+
+        boxList = palletModel.order_box_set(boxList)
+        result = palletModel.three_dimensional_corners(boxList, J, palletModel.get_bin())
+
+        # da mettere il controllo sui punti
+
+
+    def test_3d_ordering(self):
+        boxList = [ds.Box(70, 70, 70) for i in range(5)]  # scatole già posizionate
+        boxList.append(ds.Box(100, 70, 23))
+        J = [ds.Box(1, 2, 1) for i in range(3)]  # scatole che vorrei mettere
+
+        palletModel = ds.PalletizationModel(ds.Bin(1000.0, 1000.0, 1000.0), boxList)
+
+        # posiziono lo scatele
+        boxList[0].set_pos(0, 0, 0)
+        boxList[1].set_pos(70, 0, 0)
+        boxList[2].set_pos(140, 0, 0)
+        boxList[3].set_pos(0, 70, 0)
+        boxList[4].set_pos(70, 70, 0)
+        boxList[5].set_pos(0, 70, 70)
+
+        boxList = palletModel.order_box_set(boxList)
+        result = palletModel.three_dimensional_corners(boxList, J, palletModel.get_bin())
+
+        # da metttere il controllo sui punti
+
+
     def test_get_l1_bound(self):
         boxlist = [ds.Box(6, 6, 6), ds.Box(6, 6, 6), ds.Box(6, 6, 6)]
         bin = ds.Bin(10, 10, 10)
