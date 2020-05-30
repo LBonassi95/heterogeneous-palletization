@@ -16,8 +16,8 @@ class TestPalletizationModel(TestCase):
         boxList.append(ds.Box(100, 70, 23))
         J = [ds.Box(1, 2, 1) for i in range(3)]  # scatole che vorrei mettere
 
-        palletModel = ds.PalletizationModel(ds.Bin(1000.0, 1000.0, 1000.0), boxList)
-
+        palletModel = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        palletModel.boxList = boxList
         # posiziono lo scatele
         boxList[0].set_pos(0, 0, 0)
         boxList[1].set_pos(70, 0, 0)
@@ -27,18 +27,17 @@ class TestPalletizationModel(TestCase):
         boxList[5].set_pos(0, 70, 70)
 
         boxList = palletModel.order_box_set(boxList)
-        result = palletModel.three_dimensional_corners(boxList, J, palletModel.get_bin())
+        result = palletModel.three_dimensional_corners(boxList, J, palletModel.bin)
 
         # da mettere il controllo sui punti
-
 
     def test_3d_ordering(self):
         boxList = [ds.Box(70, 70, 70) for i in range(5)]  # scatole già posizionate
         boxList.append(ds.Box(100, 70, 23))
         J = [ds.Box(1, 2, 1) for i in range(3)]  # scatole che vorrei mettere
 
-        palletModel = ds.PalletizationModel(ds.Bin(1000.0, 1000.0, 1000.0), boxList)
-
+        palletModel = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        palletModel.boxList = boxList
         # posiziono lo scatele
         boxList[0].set_pos(0, 0, 0)
         boxList[1].set_pos(70, 0, 0)
@@ -48,8 +47,8 @@ class TestPalletizationModel(TestCase):
         boxList[5].set_pos(0, 70, 70)
 
         boxList = palletModel.order_box_set(boxList)
-        result = palletModel.three_dimensional_corners(boxList, J, palletModel.get_bin())
-
+        result = palletModel.three_dimensional_corners(boxList, J, palletModel.bin)
+        print('ciao')
         # da metttere il controllo sui punti
 
 
@@ -162,8 +161,17 @@ class TestPalletizationModel(TestCase):
                                              model.bin.width,
                                              model.l1_h_d))
 
-    # def test_two_dimensional_corners(self):
-    #     self.fail()
-    #
-    # def test_three_dimensional_corners(self):
-    #     self.fail()
+    def test_single_bin_filling(self):
+        single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        boxList = [ds.Box(500, 500, 500) for i in range(7)]
+        single_bin.boxList = boxList
+        res, _ = single_bin.fillBin()
+        self.assertEqual(res, True)
+
+        boxList.append(ds.Box(500, 500, 500))
+        res, _ = single_bin.fillBin()
+        self.assertEqual(res, True)
+
+        # boxList.append(ds.Box(500, 500, 500))
+        # res, _ = single_bin.fillBin()
+        # self.assertEqual(res, False)

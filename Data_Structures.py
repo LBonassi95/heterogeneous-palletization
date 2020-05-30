@@ -9,8 +9,8 @@ class Box:
         self.height = height
         self.depth = depth
         self.volume = self.width * self.height * self.depth
-
-        self.position = Point3D(-1, -1, -1)
+        self.assigned = False
+        self.position = NOT_PLACED_POINT
 
     def get_width(self):
         return self.width
@@ -45,6 +45,9 @@ class Box:
     def get_end_z(self):
         return self.position.get_z() + self.depth
 
+    def is_placed(self):
+        return self.position == NOT_PLACED_POINT
+
 
 class Point2D:
     def __init__(self, x, y):
@@ -65,6 +68,10 @@ class Point2D:
 
     def get_point(self):
         return self
+
+    def __eq__(self, other):
+        return isinstance(other, Point2D) and other.x == self.x \
+               and other.y == self.y
 
 
 class Point3D:
@@ -93,6 +100,14 @@ class Point3D:
 
     def get_point(self):
         return self
+
+    def __eq__(self, other):
+        return isinstance(other, Point3D) and other.x == self.x \
+               and other.y == self.y \
+               and other.z == self.z
+
+
+NOT_PLACED_POINT = Point3D(-1, -1, -1)
 
 
 class Bin:
@@ -161,60 +176,6 @@ class PalletizationModel:
         max_val = max(first_parameter, second_parameter)
         return j_set_card + max_val
 
-    # def get_l1_bound_old(self):
-    #     W = self.bin.width
-    #     H = self.bin.height
-    #     D = self.bin.depth
-    #     l1_w_h = max([self.get_l1_w_h(p) for p in range(1, int(np.ceil(D / 2)) + 1)])
-    #     l1_w_d = max([self.get_l1_w_d(p) for p in range(1, int(np.ceil(H / 2)) + 1)])
-    #     l1_h_d = max([self.get_l1_h_d(p) for p in range(1, int(np.ceil(W / 2)) + 1)])
-    #     return max(l1_w_h, l1_w_d, l1_h_d)
-    #
-    # def get_l1_w_h(self, p):
-    #     W = self.bin.width
-    #     H = self.bin.height
-    #     D = self.bin.depth
-    #     j_w_h = [box for box in self.boxList if (box.width > W / 2) and (box.height > H / 2)]
-    #     j_w_h_d = len([box for box in j_w_h if (box.depth > D / 2)])
-    #     Jl = [box for box in j_w_h if D - p >= box.depth > D / 2]
-    #     Js = [box for box in j_w_h if D / 2 >= box.depth >= p]
-    #     first_parameter = np.ceil(
-    #         (1 / D) * (np.sum([box.depth for box in Js]) - (len(Jl) * D - np.sum([box.depth for box in Jl]))))
-    #     second_parameter = np.ceil(
-    #         (len(Js) - (np.sum([np.floor((D - box.depth) / p) for box in Jl]))) / np.floor(D / p))
-    #     max_val = max(first_parameter, second_parameter)
-    #     return j_w_h_d + max_val
-    #
-    # def get_l1_w_d(self, p):
-    #     W = self.bin.width
-    #     D = self.bin.depth
-    #     H = self.bin.height
-    #     j_w_d = [box for box in self.boxList if (box.width > W / 2) and (box.depth > D / 2)]
-    #     j_w_d_h = len([box for box in j_w_d if (box.height > H / 2)])
-    #     Jl = [box for box in j_w_d if H - p >= box.height > H / 2]
-    #     Js = [box for box in j_w_d if H / 2 >= box.height >= p]
-    #     first_parameter = np.ceil(
-    #         (1 / H) * (np.sum([box.height for box in Js]) - (len(Jl) * H - np.sum([box.height for box in Jl]))))
-    #     second_parameter = np.ceil(
-    #         (len(Js) - (np.sum([np.floor((H - box.height) / p) for box in Jl]))) / np.floor(H / p))
-    #     max_val = max(first_parameter, second_parameter)
-    #     return j_w_d_h + max_val
-    #
-    # def get_l1_h_d(self, p):
-    #     H = self.bin.height
-    #     D = self.bin.depth
-    #     W = self.bin.width
-    #     j_h_d = [box for box in self.boxList if (box.height > H / 2) and (box.depth > D / 2)]
-    #     j_h_d_w = len([box for box in j_h_d if (box.width > W / 2)])
-    #     Jl = [box for box in j_h_d if W - p >= box.width > W / 2]
-    #     Js = [box for box in j_h_d if W / 2 >= box.width >= p]
-    #     first_parameter = np.ceil(
-    #         (1 / W) * (np.sum([box.width for box in Js]) - (len(Jl) * W - np.sum([box.width for box in Jl]))))
-    #     second_parameter = np.ceil(
-    #         (len(Js) - (np.sum([np.floor((W - box.width) / p) for box in Jl]))) / np.floor(W / p))
-    #     max_val = max(first_parameter, second_parameter)
-    #     return j_h_d_w + max_val
-
     def calculate_l2_bound(self):
         W = self.bin.width
         H = self.bin.height
@@ -254,56 +215,14 @@ class PalletizationModel:
         value = np.ceil((alpha - beta) / self.bin.get_volume())
         return l1_val + max(0, value)
 
-    # def get_l2_w_h(self, p, q):
-    #     W = self.bin.width
-    #     H = self.bin.height
-    #     D = self.bin.depth
-    #     assert 1 <= p <= W / 2
-    #     assert 1 <= q <= H / 2
-    #     Kv = [box for box in self.boxList
-    #           if (box.width > (W - p)) and (box.height > (H - q))]
-    #     Kl = [box for box in self.boxList
-    #           if (box not in Kv) and (box.width > W / 2) and (box.height > H / 2)]
-    #     Ks = [box for box in self.boxList
-    #           if (box not in (Kv + Kl)) and (box.width >= p) and (box.height >= q)]
-    #     alpha = sum(b.volume for b in (Kl + Ks))
-    #     beta = W * H * ((D * self.l1_w_h) - sum(b.depth for b in Kv))
-    #     value = np.ceil((alpha - beta) / self.bin.get_volume())
-    #     return self.l1_w_h + max(0, value)
-    #
-    # def get_l2_w_d(self, p, q):
-    #     W = self.bin.width
-    #     D = self.bin.depth
-    #     H = self.bin.height
-    #     assert 1 <= p <= W / 2
-    #     assert 1 <= q <= D / 2
-    #     Kv = [box for box in self.boxList
-    #           if (box.width > (W - p)) and (box.depth > (D - q))]
-    #     Kl = [box for box in self.boxList
-    #           if (box not in Kv) and (box.width > W / 2) and (box.depth > D / 2)]
-    #     Ks = [box for box in self.boxList
-    #           if (box not in (Kv + Kl)) and (box.width >= p) and (box.depth >= q)]
-    #     alpha = sum(b.volume for b in (Kl + Ks))
-    #     beta = W * D * ((H * self.l1_w_d) - sum(b.height for b in Kv))
-    #     value = np.ceil((alpha - beta) / self.bin.get_volume())
-    #     return self.l1_w_d + max(0, value)
-    #
-    # def get_l2_h_d(self, p, q):
-    #     W = self.bin.width
-    #     H = self.bin.height
-    #     D = self.bin.depth
-    #     assert 1 <= p <= H / 2
-    #     assert 1 <= q <= D / 2
-    #     Kv = [box for box in self.boxList
-    #           if (box.height > (H - p)) and (box.depth > (D - q))]
-    #     Kl = [box for box in self.boxList
-    #           if (box not in Kv) and (box.height > H / 2) and (box.depth > H / 2)]
-    #     Ks = [box for box in self.boxList
-    #           if (box not in (Kv + Kl)) and (box.height >= p) and (box.depth >= q)]
-    #     alpha = sum(b.volume for b in (Kl + Ks))
-    #     beta = H * D * ((W * self.l1_h_d) - sum(b.width for b in Kv))
-    #     value = np.ceil((alpha - beta) / self.bin.get_volume())
-    #     return self.l1_h_d + max(0, value)
+
+class SingleBinProblem:
+
+    def __init__(self, bin):
+        self.bin = bin
+        self.boxList = []
+        self.open = True
+        self.F = -1
 
     def order_box_set(self, box_set: [Box]):
         box_set = sorted(box_set, key=lambda box: box.get_end_x(), reverse=True)  # check if it works properly
@@ -389,3 +308,41 @@ class PalletizationModel:
             k = k + 1
 
         return total_corners
+
+    def branch_and_bound_filling(self, placed_boxes, not_placed_boxes):
+        if len(not_placed_boxes) == 0:
+            return True
+        points = self.three_dimensional_corners(placed_boxes, not_placed_boxes, self.bin)
+        for p in points:
+            # Dall'articolo é meglio ordinare le scatole per volume decrescente
+            for box in not_placed_boxes:
+                # piazzo una scatola
+                box.position = p
+                if (box.get_end_x() <= self.bin.width and
+                        box.get_end_y() <= self.bin.height and
+                        box.get_end_z() <= self.bin.depth):
+                    new_placed_boxes = [b for b in placed_boxes] + [box]
+                    new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
+                    if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
+                        return True
+                # ripristino la scatola, in quanto ho fallito
+                box.position = NOT_PLACED_POINT
+        self.update_best_filling_value(sum([b.volume for b in placed_boxes]))
+        return False
+
+    def fillBin(self):
+        self.reset_problem()
+        result = self.branch_and_bound_filling([], self.boxList)
+        if result:
+            return True, self.boxList
+        else:
+            return False, []
+
+    def reset_problem(self):
+        for b in self.boxList:
+            b.position = NOT_PLACED_POINT
+        self.F = 1e10
+
+    def update_best_filling_value(self, new_F):
+        if self.F < new_F:
+            self.F = new_F
