@@ -1,5 +1,7 @@
 import numpy as np
 
+F_INITIAL_VALUE = -1
+
 DEBUG = True
 
 
@@ -222,7 +224,7 @@ class SingleBinProblem:
         self.bin = bin
         self.boxList = []
         self.open = True
-        self.F = -1
+        self.F = F_INITIAL_VALUE
 
     def order_box_set(self, box_set: [Box]):
         box_set = sorted(box_set, key=lambda box: box.get_end_x(), reverse=True)  # check if it works properly
@@ -266,9 +268,29 @@ class SingleBinProblem:
 
         return final_corners
 
+    def compute_area(self, points2D, bin):
+        if len(points2D) == 1 and points2D[0] == Point2D(0, 0):
+            return bin.get_volume()
+
+        area = points2D[0].get_x() * bin.get_height
+        for index in range(1, len(points2D)):
+            area = area + (points2D[index].get_x() - points2D[index - 1].get_x()) * points2D[index - 1].get_y()
+        area = area + (bin.get_width() - points2D[-1].get_x()) * points2D[-1].get_y()
+
+        return area
+
+    def compute_volume(self, points3D, I_ks, bin):
+        volume = 0.0
+        for index in range(1, len(points3D)):
+            volume = volume + (points3D[index].get_z() - points3D[index - 1].get_z()) * self.compute_area(
+                self.two_dimensional_corners(I_ks[index - 1], bin), bin)
+
+        volume = volume + (bin.get_depth() - points3D[-1].get_z()) * self.compute_area(I_ks[-1], bin)
+        return volume
+
     def three_dimensional_corners(self, box_set: [Box], J: [Box], bin: Bin):
         if box_set is None or len(box_set) == 0:
-            return [Point3D(0, 0, 0)]
+            return [Point3D(0, 0, 0)], 0
 
         # must order the I set for future uses (in the for loop above)
         box_set = self.order_box_set(box_set)
@@ -287,12 +309,15 @@ class SingleBinProblem:
 
         total_corners = []
         incremental_corners = []
+        I_ks = []
         k = 0
         for depth in T:
             if depth + minimum_d > bin.get_depth():
                 break
 
             I_k = [box for box in box_set if box.get_end_z() > depth]
+            I_ks.append(I_k)
+
             incremental_corners.append(self.two_dimensional_corners(I_k, J, bin))
 
             for point in incremental_corners[-1]:
@@ -307,17 +332,20 @@ class SingleBinProblem:
 
             k = k + 1
 
-        return total_corners
+        return total_corners, self.compute_volume(total_corners, I_ks, bin)
 
     def branch_and_bound_filling(self, placed_boxes, not_placed_boxes):
         if len(not_placed_boxes) == 0:
             return True
-        points = self.three_dimensional_corners(placed_boxes, not_placed_boxes, self.bin)
+        points, VI = self.three_dimensional_corners(placed_boxes, not_placed_boxes, self.bin)
+        if not self.check_backtrack_condition(placed_boxes, VI):
+            return False
         for p in points:
             # Dall'articolo é meglio ordinare le scatole per volume decrescente
             for box in not_placed_boxes:
                 # piazzo una scatola
                 box.position = p
+                # qui si dovrá aggiungere il vincolo del peso
                 if (box.get_end_x() <= self.bin.width and
                         box.get_end_y() <= self.bin.height and
                         box.get_end_z() <= self.bin.depth):
@@ -341,8 +369,16 @@ class SingleBinProblem:
     def reset_problem(self):
         for b in self.boxList:
             b.position = NOT_PLACED_POINT
-        self.F = 1e10
+        self.F = F_INITIAL_VALUE
 
     def update_best_filling_value(self, new_F):
         if self.F < new_F:
             self.F = new_F
+
+    def check_backtrack_condition(self, placed_boxes, VI):
+        placed_volume = sum([b.volume for b in placed_boxes])
+        to_check_value = placed_volume + (self.bin.volume - VI)
+        if to_check_value <= self.F:
+            return False
+        else:
+            return True
