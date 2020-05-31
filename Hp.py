@@ -19,4 +19,17 @@ if __name__ == '__main__':
     # print(model.get_l1_bound())
     # l2 = model.get_l2_bound()
     # print(l2)
-    pass
+    single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+    boxList = [ds.Box(500, 500, 500) for i in range(7)]
+    single_bin.boxList = boxList
+    res, _ = single_bin.fillBin()
+    print('res----> ', res)
+
+    boxList.append(ds.Box(500, 500, 500))
+    res, _ = single_bin.fillBin()
+    print('res----> ', res)
+    #self.assertEqual(res, True)
+
+    boxList.append(ds.Box(500, 500, 500))
+    res, _ = single_bin.fillBin()
+    print('res---> ', res)

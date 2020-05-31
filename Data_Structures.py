@@ -47,6 +47,9 @@ class Box:
     def get_end_z(self):
         return self.position.get_z() + self.depth
 
+    def get_volume(self):
+        return self.volume
+
     def is_placed(self):
         return self.position == NOT_PLACED_POINT
 
@@ -226,13 +229,13 @@ class SingleBinProblem:
         self.open = True
         self.F = F_INITIAL_VALUE
 
-    def order_box_set(self, box_set: [Box]):
+    def order_box_set(self, box_set):
         box_set = sorted(box_set, key=lambda box: box.get_end_x(), reverse=True)  # check if it works properly
         box_set = sorted(box_set, key=lambda box: box.get_end_y(), reverse=True)  # check if it works properly
 
         return box_set
 
-    def two_dimensional_corners(self, box_set: [Box], J: [Box], bin: Bin):
+    def two_dimensional_corners(self, box_set, J, bin):
         if box_set is None or len(box_set) == 0:
             return [Point2D(0, 0)]
 
@@ -270,7 +273,7 @@ class SingleBinProblem:
 
     def compute_area(self, points2D, bin):
         if len(points2D) == 1 and points2D[0] == Point2D(0, 0):
-            return bin.get_volume()
+            return bin.get_height() * bin.get_width()
 
         area = points2D[0].get_x() * bin.get_height
         for index in range(1, len(points2D)):
@@ -279,16 +282,7 @@ class SingleBinProblem:
 
         return area
 
-    def compute_volume(self, points3D, I_ks, bin):
-        volume = 0.0
-        for index in range(1, len(points3D)):
-            volume = volume + (points3D[index].get_z() - points3D[index - 1].get_z()) * self.compute_area(
-                self.two_dimensional_corners(I_ks[index - 1], bin), bin)
-
-        volume = volume + (bin.get_depth() - points3D[-1].get_z()) * self.compute_area(I_ks[-1], bin)
-        return volume
-
-    def three_dimensional_corners(self, box_set: [Box], J: [Box], bin: Bin):
+    def three_dimensional_corners(self, box_set, J, bin):
         if box_set is None or len(box_set) == 0:
             return [Point3D(0, 0, 0)], 0
 
@@ -309,17 +303,16 @@ class SingleBinProblem:
 
         total_corners = []
         incremental_corners = []
-        I_ks = []
+
+
         k = 0
         for depth in T:
             if depth + minimum_d > bin.get_depth():
                 break
 
             I_k = [box for box in box_set if box.get_end_z() > depth]
-            I_ks.append(I_k)
 
             incremental_corners.append(self.two_dimensional_corners(I_k, J, bin))
-
             for point in incremental_corners[-1]:
                 found = False
                 if len(incremental_corners) > 1:
@@ -332,7 +325,11 @@ class SingleBinProblem:
 
             k = k + 1
 
-        return total_corners, self.compute_volume(total_corners, I_ks, bin)
+        volume = 0.0
+        for box in box_set:
+            volume = volume + box.get_volume()
+
+        return total_corners, volume
 
     def branch_and_bound_filling(self, placed_boxes, not_placed_boxes):
         if len(not_placed_boxes) == 0:
