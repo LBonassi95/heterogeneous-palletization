@@ -1,3 +1,4 @@
+# coding=utf-8
 from unittest import TestCase
 import Data_Structures as ds
 import random
@@ -172,6 +173,11 @@ class TestPalletizationModel(TestCase):
         res, _ = single_bin.fillBin()
         self.assertEqual(res, True)
 
-        # boxList.append(ds.Box(500, 500, 500))
-        # res, _ = single_bin.fillBin()
-        # self.assertEqual(res, False)
+        boxList.append(ds.Box(500, 500, 500))
+        res, _ = single_bin.fillBin()
+        self.assertEqual(res, False)
+
+        boxList = [ds.Box(100, 200, 300) for i in range(150)]
+        single_bin.boxList = boxList
+        res, boxList = single_bin.fillBin()
+        self.assertEqual(res, True)

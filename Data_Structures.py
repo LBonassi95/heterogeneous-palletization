@@ -1,3 +1,4 @@
+# coding=utf-8
 import numpy as np
 
 F_INITIAL_VALUE = -1
@@ -371,6 +372,8 @@ class SingleBinProblem:
     def update_best_filling_value(self, new_F):
         if self.F < new_F:
             self.F = new_F
+            if DEBUG:
+                print 'new best volume achieved -----> ' + str(self.F)
 
     def check_backtrack_condition(self, placed_boxes, VI):
         placed_volume = sum([b.volume for b in placed_boxes])
