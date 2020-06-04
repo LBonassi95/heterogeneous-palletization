@@ -7,7 +7,7 @@ import random
 def get_random_model(num_of_boxes):
     random.seed(47)
     boxList = [ds.Box(float(random.randint(1, 10)), float(random.randint(1, 10)), float(random.randint(1, 10))) for i in range(num_of_boxes)]
-    return ds.PalletizationModel(ds.Bin(10, 10, 10), boxList)
+    return ds.PalletizationModel(ds.Bin(10.0, 10.0, 10.0), boxList)
 
 
 class TestPalletizationModel(TestCase):
@@ -54,45 +54,45 @@ class TestPalletizationModel(TestCase):
 
 
     def test_get_l1_bound(self):
-        boxlist = [ds.Box(6, 6, 6), ds.Box(6, 6, 6), ds.Box(6, 6, 6)]
-        bin = ds.Bin(10, 10, 10)
+        boxlist = [ds.Box(6.0, 6.0, 6.0), ds.Box(6.0, 6.0, 6.0), ds.Box(6.0, 6.0, 6.0)]
+        bin = ds.Bin(10.0, 10.0, 10.0)
         model = ds.PalletizationModel(bin, boxlist)
         self.assertEqual(3, model.get_l1_bound())
         model = get_random_model(100)
-        self.assertEqual(24, model.get_l1_bound())
+        self.assertEqual(19, model.get_l1_bound())
 
     def test_get_l1_w_h(self):
         ############################################################
         boxlist = [ds.Box(6, 6, 7), ds.Box(6, 6, 5), ds.Box(6, 6, 3)]
-        bin = ds.Bin(10, 10, 10)
+        bin = ds.Bin(10.0, 10.0, 10.0)
         p = 3
         model = ds.PalletizationModel(bin, boxlist)
         value_list = [[box.width, box.height, box.depth] for box in boxlist]
         self.assertEqual(2, model.get_l1_p(p, value_list, bin.width, bin.height, bin.depth))
         ############################################################
         boxlist = [ds.Box(6, 6, 7), ds.Box(6, 6, 5), ds.Box(6, 6, 2)]
-        bin = ds.Bin(10, 10, 10)
+        bin = ds.Bin(10.0, 10.0, 10.0)
         p = 3
         model = ds.PalletizationModel(bin, boxlist)
         value_list = [[box.width, box.height, box.depth] for box in boxlist]
         self.assertEqual(2, model.get_l1_p(p, value_list, bin.width, bin.height, bin.depth))
         ############################################################
         boxlist = [ds.Box(6, 6, 5), ds.Box(6, 6, 5), ds.Box(6, 6, 2)]
-        bin = ds.Bin(10, 10, 10)
+        bin = ds.Bin(10.0, 10.0, 10.0)
         p = 3
         model = ds.PalletizationModel(bin, boxlist)
         value_list = [[box.width, box.height, box.depth] for box in boxlist]
         self.assertEqual(1, model.get_l1_p(p, value_list, bin.width, bin.height, bin.depth))
         ############################################################
         boxlist = []
-        bin = ds.Bin(10, 10, 10)
+        bin = ds.Bin(10.0, 10.0, 10.0)
         p = 3
         model = ds.PalletizationModel(bin, boxlist)
         value_list = [[box.width, box.height, box.depth] for box in boxlist]
         self.assertEqual(0, model.get_l1_p(p, value_list, bin.width, bin.height, bin.depth))
         ############################################################
         boxlist = [ds.Box(6, 6, 5), ds.Box(6, 6, 5), ds.Box(6, 6, 2)]
-        bin = ds.Bin(10, 10, 10)
+        bin = ds.Bin(10.0, 10.0, 10.0)
         p = 5
         model = ds.PalletizationModel(bin, boxlist)
         value_list = [[box.width, box.height, box.depth] for box in boxlist]
@@ -101,7 +101,7 @@ class TestPalletizationModel(TestCase):
     def test_get_l1_w_d(self):
         ############################################################
         boxlist = [ds.Box(6, 7, 6), ds.Box(6, 5, 6), ds.Box(6, 3, 6)]
-        bin = ds.Bin(10, 10, 10)
+        bin = ds.Bin(10.0, 10.0, 10.0)
         p = 3
         model = ds.PalletizationModel(bin, boxlist)
         value_list = [[box.width, box.depth, box.height] for box in boxlist]
@@ -110,7 +110,7 @@ class TestPalletizationModel(TestCase):
     def test_get_l1_h_d(self):
         ############################################################
         boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
-        bin = ds.Bin(10, 10, 10)
+        bin = ds.Bin(10.0, 10.0, 10.0)
         p = 3
         model = ds.PalletizationModel(bin, boxlist)
         value_list = [[box.height, box.depth, box.width] for box in boxlist]
@@ -122,7 +122,7 @@ class TestPalletizationModel(TestCase):
 
     def test_get_l2_w_h(self):
         boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
-        bin = ds.Bin(6, 7, 8)
+        bin = ds.Bin(6.0, 7.0, 8.0)
         p = 2
         q = 3
         model = ds.PalletizationModel(bin, boxlist)
@@ -135,7 +135,7 @@ class TestPalletizationModel(TestCase):
                                              model.l1_w_h))
 
     def test_get_l2_w_d(self):
-        boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
+        boxlist = [ds.Box(7.0, 6.0, 6.0), ds.Box(5.0, 6.0, 6.0), ds.Box(3.0, 6.0, 6.0)]
         bin = ds.Bin(6, 7, 8)
         p = 2
         q = 3
@@ -149,8 +149,8 @@ class TestPalletizationModel(TestCase):
                                              model.l1_w_d))
 
     def test_get_l2_h_d(self):
-        boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
-        bin = ds.Bin(6, 7, 8)
+        boxlist = [ds.Box(7.0, 6.0, 6.0), ds.Box(5.0, 6.0, 6.0), ds.Box(3.0, 6.0, 6.0)]
+        bin = ds.Bin(6.0, 7.0, 8.0)
         p = 2
         q = 3
         model = ds.PalletizationModel(bin, boxlist)
@@ -164,20 +164,20 @@ class TestPalletizationModel(TestCase):
 
     def test_single_bin_filling(self):
         single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
-        boxList = [ds.Box(500, 500, 500) for i in range(7)]
+        boxList = [ds.Box(500.0, 500.0, 500.0) for i in range(7)]
         single_bin.boxList = boxList
         res, _ = single_bin.fillBin()
         self.assertEqual(res, True)
 
-        boxList.append(ds.Box(500, 500, 500))
+        boxList.append(ds.Box(500.0, 500.0, 500.0))
         res, _ = single_bin.fillBin()
         self.assertEqual(res, True)
 
-        boxList.append(ds.Box(500, 500, 500))
+        boxList.append(ds.Box(500.0, 500.0, 500.0))
         res, _ = single_bin.fillBin()
         self.assertEqual(res, False)
 
-        boxList = [ds.Box(100, 200, 300) for i in range(150)]
+        boxList = [ds.Box(100.0, 200.0, 300.0) for i in range(150)]
         single_bin.boxList = boxList
         res, boxList = single_bin.fillBin()
         self.assertEqual(res, True)
