@@ -4,7 +4,8 @@ import numpy as np
 F_INITIAL_VALUE = -1
 
 DEBUG = True
-
+DEFAULT_MAX_WEIGHT = 10
+DEFAULT_WEIGHT = 1
 
 class Box:
     def __init__(self, width, height, depth):
@@ -12,8 +13,26 @@ class Box:
         self.height = height
         self.depth = depth
         self.volume = self.width * self.height * self.depth
+        self.weight = DEFAULT_WEIGHT
         self.assigned = False
         self.position = NOT_PLACED_POINT
+        self.belowBoxes = []
+        self.maximumWeight = DEFAULT_MAX_WEIGHT
+
+    def get_maximumWeight(self):
+        return self.maximumWeight
+
+    def get_weight(self):
+        return self.weight
+
+    def get_below_boxes(self):
+        return self.belowBoxes
+
+    def set_below_boxes(self, boxes):
+        self.belowBoxes = boxes
+
+    def set_weight(self, weight):
+        self.weight = weight
 
     def get_width(self):
         return self.width
@@ -31,13 +50,13 @@ class Box:
         return self.position
 
     def get_pos_x(self):
-        return self.position[0]
+        return self.position.get_x()
 
     def get_pos_y(self):
-        return self.position[1]
+        return self.position.get_y()
 
     def get_pos_z(self):
-        return self.position[2]
+        return self.position.get_z()
 
     def get_end_x(self):
         return self.position.get_x() + self.width
@@ -108,7 +127,8 @@ class Point3D:
         return self
 
     def __eq__(self, other):
-        return isinstance(other, Point3D) and other.x == self.x \
+        return isinstance(other, Point3D) \
+               and other.x == self.x \
                and other.y == self.y \
                and other.z == self.z
 
@@ -229,14 +249,17 @@ class SingleBinProblem:
         self.boxList = []
         self.open = True
         self.F = F_INITIAL_VALUE
+        self.withWeight = False
 
+    # this method orders a given box set such that the ys are not increasing. If two or more boxes have the same y then
+    # the x value is used as a discriminant (in a non increasing way)
     def order_box_set(self, box_set):
         box_set = sorted(box_set, key=lambda box: box.get_end_x(), reverse=True)  # check if it works properly
         box_set = sorted(box_set, key=lambda box: box.get_end_y(), reverse=True)  # check if it works properly
 
         return box_set
 
-    def two_dimensional_corners(self, box_set, J, bin):
+    def two_dimensional_corners(self, box_set, J):
         if box_set is None or len(box_set) == 0:
             return [Point2D(0, 0)]
 
@@ -267,23 +290,23 @@ class SingleBinProblem:
 
         final_corners = []
         for corner in corners:
-            if (corner.get_x() + minimum_w) <= bin.get_width() and (corner.get_y() + minimum_h) <= bin.get_height():
+            if (corner.get_x() + minimum_w) <= self.bin.get_width() and (corner.get_y() + minimum_h) <= self.bin.get_height():
                 final_corners.append(corner)
 
         return final_corners
 
-    def compute_area(self, points2D, bin):
+    def compute_area(self, points2D):
         if len(points2D) == 1 and points2D[0] == Point2D(0, 0):
-            return bin.get_height() * bin.get_width()
+            return self.bin.get_height() * self.bin.get_width()
 
-        area = points2D[0].get_x() * bin.get_height
+        area = points2D[0].get_x() * self.bin.get_height
         for index in range(1, len(points2D)):
             area = area + (points2D[index].get_x() - points2D[index - 1].get_x()) * points2D[index - 1].get_y()
-        area = area + (bin.get_width() - points2D[-1].get_x()) * points2D[-1].get_y()
+        area = area + (self.bin.get_width() - points2D[-1].get_x()) * points2D[-1].get_y()
 
         return area
 
-    def three_dimensional_corners(self, box_set, J, bin):
+    def three_dimensional_corners(self, box_set, J):
         if box_set is None or len(box_set) == 0:
             return [Point3D(0, 0, 0)], 0
 
@@ -308,12 +331,12 @@ class SingleBinProblem:
 
         k = 0
         for depth in T:
-            if depth + minimum_d > bin.get_depth():
+            if depth + minimum_d > self.bin.get_depth():
                 break
 
             I_k = [box for box in box_set if box.get_end_z() > depth]
 
-            incremental_corners.append(self.two_dimensional_corners(I_k, J, bin))
+            incremental_corners.append(self.two_dimensional_corners(I_k, J))
             for point in incremental_corners[-1]:
                 found = False
                 if len(incremental_corners) > 1:
@@ -335,26 +358,62 @@ class SingleBinProblem:
     def branch_and_bound_filling(self, placed_boxes, not_placed_boxes):
         if len(not_placed_boxes) == 0:
             return True
-        points, VI = self.three_dimensional_corners(placed_boxes, not_placed_boxes, self.bin)
+
+        points, VI = self.three_dimensional_corners(placed_boxes, not_placed_boxes)
+
         if not self.check_backtrack_condition(placed_boxes, VI):
             return False
+
         for p in points:
             # Dall'articolo é meglio ordinare le scatole per volume decrescente
             for box in not_placed_boxes:
                 # piazzo una scatola
                 box.position = p
-                # qui si dovrá aggiungere il vincolo del peso
+                # qui si dovrá aggiungere il vincolo del peso.0
+
                 if (box.get_end_x() <= self.bin.width and
                         box.get_end_y() <= self.bin.height and
                         box.get_end_z() <= self.bin.depth):
-                    new_placed_boxes = [b for b in placed_boxes] + [box]
-                    new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
-                    if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
-                        return True
+
+                    # start modifiche
+
+                    below_boxes = getBoxesBelow(box, placed_boxes)
+                    if self.withWeight:
+                        box.set_below_boxes(below_boxes)
+
+                        if self.check_weight_condition(box, box.weight):
+                            # piazzo la scatola ed eventualmente distribuisco il peso
+                            # per distribuire il peso servirà salvarsi un current_weight_supported o qualcosa del genere
+                            # ma per adesso controlla se funziona così
+                            new_placed_boxes = [b for b in placed_boxes] + [box]
+                            new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
+
+                    # end modifiche
+
+                            if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
+                                return True
+                    else: # se non è la versione pesata rimane tutto uguale
+                        new_placed_boxes = [b for b in placed_boxes] + [box]
+                        new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
+
+                        if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
+                            return True
                 # ripristino la scatola, in quanto ho fallito
                 box.position = NOT_PLACED_POINT
+                box.set_below_boxes([])
         self.update_best_filling_value(sum([b.volume for b in placed_boxes]))
         return False
+
+    def check_weight_condition(self, box, current_weight):
+        if len(box.get_below_boxes()) > 0:
+            for below_box in box.get_below_boxes():
+                if below_box.get_maximumWeight() < current_weight:
+                    return False
+
+                if not self.check_weight_condition(below_box, current_weight+below_box.get_weight()):
+                    return False
+
+        return True
 
     def fillBin(self):
         self.reset_problem()
@@ -372,6 +431,7 @@ class SingleBinProblem:
     def update_best_filling_value(self, new_F):
         if self.F < new_F:
             self.F = new_F
+
             if DEBUG:
                 print 'new best volume achieved -----> ' + str(self.F)
 
@@ -382,3 +442,53 @@ class SingleBinProblem:
             return False
         else:
             return True
+
+    def getBoxesBelow(box, placed_boxes):
+        to_place_box_y = box.get_pos_y()
+
+        if to_place_box_y == 0:
+            return []
+
+        to_place_box_end_x = box.get_end_x()
+        to_place_box_start_x = box.get_pos_x()
+        to_place_box_end_z = box.get_end_z()
+        to_place_box_start_z = box.get_pos_z()
+
+        below_boxes = []
+        for tmp_box in placed_boxes:
+            if to_place_box_y == tmp_box.get_end_y():
+                condition_x = not (
+                            tmp_box.get_pos_x() >= to_place_box_end_x or tmp_box.get_end_x() <= to_place_box_start_x)
+                condition_z = not (
+                            tmp_box.get_pos_z() >= to_place_box_end_z or tmp_box.get_end_z() <= to_place_box_start_z)
+
+                if condition_x and condition_z:
+                    below_boxes.append(tmp_box)
+
+        return below_boxes
+
+
+
+
+# FOR TEST PURPOSES
+def getBoxesBelow(box, placed_boxes):
+    to_place_box_y = box.get_pos_y()
+
+    if to_place_box_y == 0:
+        return []
+
+    to_place_box_end_x = box.get_end_x()
+    to_place_box_start_x = box.get_pos_x()
+    to_place_box_end_z = box.get_end_z()
+    to_place_box_start_z = box.get_pos_z()
+
+    below_boxes = []
+    for tmp_box in placed_boxes:
+        if to_place_box_y == tmp_box.get_end_y():
+            condition_x = not (tmp_box.get_pos_x() >= to_place_box_end_x or tmp_box.get_end_x() <= to_place_box_start_x)
+            condition_z = not (tmp_box.get_pos_z() >= to_place_box_end_z or tmp_box.get_end_z() <= to_place_box_start_z)
+
+            if condition_x and condition_z:
+                below_boxes.append(tmp_box)
+
+    return below_boxes

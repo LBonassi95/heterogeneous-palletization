@@ -28,7 +28,7 @@ class TestPalletizationModel(TestCase):
         boxList[5].set_pos(0, 70, 70)
 
         boxList = palletModel.order_box_set(boxList)
-        result = palletModel.three_dimensional_corners(boxList, J, palletModel.bin)
+        result = palletModel.three_dimensional_corners(boxList, J)
 
         # da mettere il controllo sui punti
 
@@ -48,7 +48,7 @@ class TestPalletizationModel(TestCase):
         boxList[5].set_pos(0, 70, 70)
 
         boxList = palletModel.order_box_set(boxList)
-        result = palletModel.three_dimensional_corners(boxList, J, palletModel.bin)
+        result = palletModel.three_dimensional_corners(boxList, J)
         print('ciao')
         # da metttere il controllo sui punti
 
@@ -118,7 +118,7 @@ class TestPalletizationModel(TestCase):
 
     def test_get_l2_bound(self):
         model = get_random_model(100)
-        self.assertEqual(26, model.get_l2_bound())
+        self.assertEqual(21, model.get_l2_bound())
 
     def test_get_l2_w_h(self):
         boxlist = [ds.Box(7, 6, 6), ds.Box(5, 6, 6), ds.Box(3, 6, 6)]
@@ -181,3 +181,76 @@ class TestPalletizationModel(TestCase):
         single_bin.boxList = boxList
         res, boxList = single_bin.fillBin()
         self.assertEqual(res, True)
+
+    def test_below_boxes(self):
+        box1 = ds.Box(4.0,5.0,3.0)
+        box1.set_pos(0, 0, 0)
+
+        box2 = ds.Box(4.0, 5.0, 2.0)
+        box2.set_pos(2.0, 5.0, 2.0)
+        self.assertEqual(len(ds.getBoxesBelow(box2, [box1])), 1)
+
+        box3 = ds.Box(4.0, 5.0, 2.0)
+        box3.set_pos(4.0, 5.0, 3.0)
+        self.assertEqual(len(ds.getBoxesBelow(box3, [box1])), 0)
+
+        box4 = ds.Box(4.0, 5.0, 2.0)
+        box4.set_pos(3.99, 5.0, 2.99)
+        self.assertEqual(len(ds.getBoxesBelow(box4, [box1])), 1)
+
+        box5 = ds.Box(3.0, 5.0, 2.0)
+        box5.set_pos(1.0, 5.0, 1.0)
+        self.assertEqual(len(ds.getBoxesBelow(box5, [box1])), 1)
+
+        box6 = ds.Box(1.0, 5.0, 1.0)
+        box6.set_pos(0.0, 0, 0.0)
+
+        box7 = ds.Box(1.0, 5.0, 1.0)
+        box7.set_pos(1.0, 0, 1.0)
+
+        box8 = ds.Box(1.0, 5.0, 1.0)
+        box8.set_pos(2.0, 0, 2.0)
+
+        box9 = ds.Box(1.0, 5.0, 1.0)
+        box9.set_pos(3.0, 0, 3.0)
+
+        box0 = ds.Box(1.0, 5.0, 1.0)
+        box0.set_pos(4.0, 4, 4.0)
+
+        box_sopra = ds.Box(6.0, 5.0, 6.0)
+        box_sopra.set_pos(0, 5, 0)
+
+        self.assertEqual(len(ds.getBoxesBelow(box_sopra, [box6, box7, box8, box9, box0])), 4)
+
+    def test_weighted_single_bin_filling(self):
+        box6 = ds.Box(1.0, 5.0, 1.0)
+        box6.set_pos(0.0, 0, 0.0)
+
+        box7 = ds.Box(1.0, 5.0, 1.0)
+        box7.set_pos(1.0, 0, 1.0)
+
+        box8 = ds.Box(1.0, 5.0, 1.0)
+        box8.set_pos(2.0, 0, 2.0)
+
+        box9 = ds.Box(1.0, 5.0, 1.0)
+        box9.set_pos(3.0, 0, 3.0)
+
+        box0 = ds.Box(1.0, 5.0, 1.0)
+        box0.set_pos(4.0, 0, 4.0)
+
+        box_sopra = ds.Box(6.0, 5.0, 6.0)
+        box_sopra.set_pos(0, 5, 0)
+        box_sopra.set_weight(ds.DEFAULT_MAX_WEIGHT-5)
+
+        box_sopra_sopra = ds.Box(6.0, 5.0, 6.0)
+        box_sopra_sopra.set_pos(0, 10, 0)
+        box_sopra_sopra.set_weight(ds.DEFAULT_MAX_WEIGHT )
+
+        single_bin = ds.SingleBinProblem(ds.Bin(6, 15, 6))
+        boxList = [box6, box7, box8, box9, box0]
+        single_bin.withWeight = True
+
+        self.assertEqual(True, single_bin.branch_and_bound_filling(boxList, [box_sopra]))
+
+        boxList.append(box_sopra)
+        self.assertEqual(False, single_bin.branch_and_bound_filling(boxList, [box_sopra_sopra]))
