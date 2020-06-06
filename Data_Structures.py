@@ -163,11 +163,14 @@ class PalletizationModel:
             openBins = []
         self.boxList = sorted(boxList, key=lambda box: box.get_volume(), reverse=False)
         self.bin = bin
-        self.Z = -1
         self.M = openBins
 
     def final_state(self):
         return len(self.boxList) == 0
+
+    def __copy__(self):
+        copy = PalletizationModel(self.bin, [], openBins=[b.__copy__() for b in self.M])
+        return copy
 
     def get_bin(self):
         return self.bin
@@ -242,7 +245,7 @@ class PalletizationModel:
         return l1_val + max(0, value)
 
     def try_to_close(self, left_box_list, sp):
-        sp = sp.copyProblem()
+        sp = sp.__copy__()
         try_to_place_list = []
         for j in left_box_list:
             to_check = sp.boxList + [j]
@@ -268,7 +271,7 @@ class PalletizationModel:
         sp.fillBin()
         result, sp = self.try_to_close(left_box_list, sp)
         new_node = PalletizationModel(self.bin, left_box_list,
-                                      [s.copyProblem() for s in self.M] + [sp])
+                                      [s.__copy__() for s in self.M] + [sp])
         if sp.open == False:
             l2 = self.get_l2_bound(left_box_list)
             if not l2 + len([spc for spc in new_node.M if spc.open == False]) >= incumbent:
@@ -278,8 +281,12 @@ class PalletizationModel:
         else:
             return new_node
 
+    def get_closed_bins(self):
+        dim = len([c for c in self.M if c.open == False])
+        return dim
+
     # def get_neighbor(self, i, next_box):
-    #     new_M = [s.copyProblem() for s in self.M]
+    #     new_M = [s.__copy__() for s in self.M]
     #     sb = new_M[i]
     #     if not self.get_l2_bound(sb.boxList + [next_box]) >= 2:
     #         sb_H2 = H2(sb.boxList + [next_box], self.bin)
@@ -313,7 +320,7 @@ class SingleBinProblem:
         self.placement_best_solution = []
         self.withWeight = False
 
-    def copyProblem(self):
+    def __copy__(self):
         copy = SingleBinProblem(self.bin)
         copy.F = self.F
         copy.boxList = [box for box in self.boxList]
@@ -594,17 +601,49 @@ def H2(boxList, bin):
 
 class Search:
 
-    def __init__(self, allBoxes, bin):
-        self.Z = self.Z = max(H2(allBoxes, bin), H1(allBoxes, bin))
+    def __init__(self,bin, allBoxes):
+        self.Z = len(H2(allBoxes, bin))
         self.allBoxes = allBoxes
         self.bin = bin
 
-    def search(self):
-        open_list = []
-        current_node = PalletizationModel(self.allBoxes, self.bin)
-        while not current_node.final_state():
-            neighborhood = current_node.get_neighborhood(current_node)
-            for n in neighborhood:
-                open_list.append(n)
-            current_node = open_list[len(open_list) - 1]
-        return current_node
+    # def search(self):
+    #     open_list = []
+    #     current_node = PalletizationModel(self.allBoxes, self.bin)
+    #     while not current_node.final_state():
+    #         neighborhood = current_node.get_neighborhood(current_node)
+    #         for n in neighborhood:
+    #             open_list.append(n)
+    #         current_node = open_list[len(open_list) - 1]
+    #     return current_node
+
+    def backtracking_search(self, current_problem):
+        not_placed_boxes = current_problem.boxList
+        if current_problem.get_l2_bound(current_problem.boxList) + current_problem.get_closed_bins() >= self.Z:
+            return "fail"
+        if not_placed_boxes == []:
+            return current_problem
+        box = not_placed_boxes[0]
+        for i in range(len(current_problem.M)):
+            new_p = current_problem.__copy__()
+            new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+            new_p.boxList = new_not_placed_boxes
+            new_sbp = new_p.M[i]
+            new_sbp.add_boxes(box)
+            single_bin_result = new_sbp.fillBin()
+            if single_bin_result == []:
+                result = self.backtracking_search(new_p)
+                if result != "fail":
+                    return result
+        if len(current_problem.M) < self.Z - 1:
+            new_sbp = SingleBinProblem(self.bin)
+            new_sbp.add_boxes(box)
+            new_sbp.fillBin()
+            new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+            new_bins = [sbp.__copy__() for sbp in current_problem.M]
+            new_p = PalletizationModel(self.bin, new_not_placed_boxes, new_bins + [new_sbp])
+            result = self.backtracking_search(new_p)
+            if result != "fail":
+                return result
+        return "fail"
+
+
