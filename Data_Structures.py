@@ -158,34 +158,29 @@ class Bin:
 
 class PalletizationModel:
 
-    def __init__(self, bin, boxList):
-        self.boxList = boxList
+    def __init__(self, bin, boxList, openBins=None):
+        if openBins is None:
+            openBins = []
+        self.boxList = sorted(boxList, key=lambda box: box.get_volume(), reverse=False)
         self.bin = bin
-        self.list_w_h = [[box.width, box.height, box.depth] for box in self.boxList]
-        self.list_w_d = [[box.width, box.depth, box.height] for box in self.boxList]
-        self.list_h_d = [[box.height, box.depth, box.width] for box in self.boxList]
-        self.l1_w_h = None
-        self.l1_w_d = None
-        self.l1_h_d = None
-        self.l1 = None
-        self.l2 = None
-        self.calculate_l1_bound()
-        self.calculate_l2_bound()
+        self.Z = -1
+        self.M = openBins
+
+    def final_state(self):
+        return len(self.boxList) == 0
 
     def get_bin(self):
         return self.bin
 
-    def calculate_l1_bound(self):
+    def calculate_l1_bound(self, list_w_h, list_w_d, list_h_d):
         W = self.bin.width
         H = self.bin.height
         D = self.bin.depth
-        self.l1_w_h = self.get_l1_p_max(self.list_w_h, W, H, D)
-        self.l1_w_d = self.get_l1_p_max(self.list_w_d, W, D, H)
-        self.l1_h_d = self.get_l1_p_max(self.list_h_d, H, D, W)
-        self.l1 = max(self.l1_w_h, self.l1_w_d, self.l1_h_d)
-
-    def get_l1_bound(self):
-        return self.l1
+        l1_w_h = self.get_l1_p_max(list_w_h, W, H, D)
+        l1_w_d = self.get_l1_p_max(list_w_d, W, D, H)
+        l1_h_d = self.get_l1_p_max(list_h_d, H, D, W)
+        l1 = max(l1_w_h, l1_w_d, l1_h_d)
+        return l1_w_h, l1_w_d, l1_h_d, l1
 
     def get_l1_p_max(self, value_list, v1, v2, v3):
         return max([self.get_l1_p(p, value_list, v1, v2, v3) for p in range(1, int(np.ceil(v3 / 2)) + 1)])
@@ -202,14 +197,14 @@ class PalletizationModel:
         max_val = max(first_parameter, second_parameter)
         return j_set_card + max_val
 
-    def calculate_l2_bound(self):
+    def calculate_l2_bound(self, boxList, list_w_h, list_w_d, list_h_d, l1_w_h, l1_w_d, l1_h_d, l1):
         W = self.bin.width
         H = self.bin.height
         D = self.bin.depth
         width_values = []
         height_values = []
         depth_values = []
-        for box in self.boxList:
+        for box in boxList:
             if box.width not in width_values and box.width <= W / 2:
                 width_values.append(box.width)
             if box.height not in height_values and box.height <= H / 2:
@@ -217,14 +212,19 @@ class PalletizationModel:
             if box.depth not in depth_values and box.depth <= D / 2:
                 depth_values.append(box.depth)
         if len(width_values) == 0 or len(height_values) == 0 or len(depth_values) == 0:
-            return self.get_l1_bound()
-        l2_w_h = self.get_l2_p_q_max(width_values, height_values, self.list_w_h, W, H, D, self.l1_w_h)
-        l2_w_d = self.get_l2_p_q_max(width_values, depth_values, self.list_w_d, W, D, H, self.l1_w_d)
-        l2_h_d = self.get_l2_p_q_max(height_values, depth_values, self.list_h_d, H, D, W, self.l1_h_d)
-        self.l2 = max(l2_w_h, l2_w_d, l2_h_d)
+            return l1
+        l2_w_h = self.get_l2_p_q_max(width_values, height_values, list_w_h, W, H, D, l1_w_h)
+        l2_w_d = self.get_l2_p_q_max(width_values, depth_values, list_w_d, W, D, H, l1_w_d)
+        l2_h_d = self.get_l2_p_q_max(height_values, depth_values, list_h_d, H, D, W, l1_h_d)
+        return max(l2_w_h, l2_w_d, l2_h_d)
 
-    def get_l2_bound(self):
-        return self.l2
+    def get_l2_bound(self, boxList):
+        list_w_h = [[box.width, box.height, box.depth] for box in boxList]
+        list_w_d = [[box.width, box.depth, box.height] for box in boxList]
+        list_h_d = [[box.height, box.depth, box.width] for box in boxList]
+        l1_w_h, l1_w_d, l1_h_d, l1 = self.calculate_l1_bound(list_w_h, list_w_d, list_h_d)
+        l2 = self.calculate_l2_bound(boxList, list_w_h, list_w_d, list_h_d, l1_w_h, l1_w_d, l1_h_d, l1)
+        return l2
 
     def get_l2_p_q_max(self, p_array, q_array, value_list, v1, v2, v3, l1_val):
         return max([self.get_l2_p_q(p, q, value_list, v1, v2, v3, l1_val) for p in p_array for q in q_array])
@@ -241,6 +241,67 @@ class PalletizationModel:
         value = np.ceil((alpha - beta) / self.bin.get_volume())
         return l1_val + max(0, value)
 
+    def try_to_close(self, left_box_list, sp):
+        sp = sp.copyProblem()
+        try_to_place_list = []
+        for j in left_box_list:
+            to_check = sp.boxList + [j]
+            if not self.get_l2_bound(to_check) >= 2:
+                try_to_place_list.append(j)
+        if len(try_to_place_list) == 0:
+            sp.open = False
+            return sp
+        else:
+            sb_list = H2(sp.boxList + try_to_place_list, self.bin)
+            if len(sb_list) == 1:
+                sb_list[0].open = False
+                for box in try_to_place_list:
+                    left_box_list.remove(box)
+                return sb_list[0]
+            else:
+                return sp
+
+    def get_neighbor_new_open_bin(self, next_box, incumbent):
+        left_box_list = [box for box in self.boxList if box != next_box]
+        sp = SingleBinProblem(self.bin)
+        sp.add_boxes(next_box)
+        sp.fillBin()
+        result, sp = self.try_to_close(left_box_list, sp)
+        new_node = PalletizationModel(self.bin, left_box_list,
+                                      [s.copyProblem() for s in self.M] + [sp])
+        if sp.open == False:
+            l2 = self.get_l2_bound(left_box_list)
+            if not l2 + len([spc for spc in new_node.M if spc.open == False]) >= incumbent:
+                return new_node
+            else:
+                return None
+        else:
+            return new_node
+
+    # def get_neighbor(self, i, next_box):
+    #     new_M = [s.copyProblem() for s in self.M]
+    #     sb = new_M[i]
+    #     if not self.get_l2_bound(sb.boxList + [next_box]) >= 2:
+    #         sb_H2 = H2(sb.boxList + [next_box], self.bin)
+    #         # DA AGGIUNGERE H1
+    #         if len(sb_H2) == 1:
+    #             new_M[i] = sb_H2[0]
+    #             new_M[i].try_to_close()
+    #             return new_M
+    #         else:
+    #             result = sb.fillBin()
+    #             if result == []:
+    #                 new_M[i].try_to_close()
+    #                 return new_M
+    #
+    # def get_neighborhood(self, node, incumbent):
+    #     next_box = self.boxList[0]
+    #     neighborhood = []
+    #     if len(node.M) < self.Z - 1:
+    #         new_node = self.get_neighbor_new_open_bin(next_box)
+    #     for i in range(self.M):
+    #         pass
+
 
 class SingleBinProblem:
 
@@ -249,7 +310,17 @@ class SingleBinProblem:
         self.boxList = []
         self.open = True
         self.F = F_INITIAL_VALUE
+        self.placement_best_solution = []
         self.withWeight = False
+
+    def copyProblem(self):
+        copy = SingleBinProblem(self.bin)
+        copy.F = self.F
+        copy.boxList = [box for box in self.boxList]
+        copy.open = self.open
+        copy.withWeight = self.withWeight
+        copy.placement_best_solution = [t for t in self.placement_best_solution]
+        return copy
 
     # this method orders a given box set such that the ys are not increasing. If two or more boxes have the same y then
     # the x value is used as a discriminant (in a non increasing way)
@@ -355,7 +426,18 @@ class SingleBinProblem:
 
         return total_corners, volume
 
-    def branch_and_bound_filling(self, placed_boxes, not_placed_boxes):
+    def check_weight_condition(self, box, current_weight):
+        if len(box.get_below_boxes()) > 0:
+            for below_box in box.get_below_boxes():
+                if below_box.get_maximumWeight() < current_weight:
+                    return False
+
+                if not self.check_weight_condition(below_box, current_weight+below_box.get_weight()):
+                    return False
+
+        return True
+
+    def branch_and_bound_filling(self, placed_boxes, not_placed_boxes, m_cut=False, m=4):
         if len(not_placed_boxes) == 0:
             return True
 
@@ -377,7 +459,7 @@ class SingleBinProblem:
 
                     # start modifiche
 
-                    below_boxes = getBoxesBelow(box, placed_boxes)
+                    below_boxes = self.getBoxesBelow(box, placed_boxes)
                     if self.withWeight:
                         box.set_below_boxes(below_boxes)
 
@@ -388,11 +470,9 @@ class SingleBinProblem:
                             new_placed_boxes = [b for b in placed_boxes] + [box]
                             new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
 
-                    # end modifiche
-
                             if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
                                 return True
-                    else: # se non è la versione pesata rimane tutto uguale
+                    else:
                         new_placed_boxes = [b for b in placed_boxes] + [box]
                         new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
 
@@ -401,32 +481,23 @@ class SingleBinProblem:
                 # ripristino la scatola, in quanto ho fallito
                 box.position = NOT_PLACED_POINT
                 box.set_below_boxes([])
-        self.update_best_filling_value(sum([b.volume for b in placed_boxes]))
+        self.update_best_filling(placed_boxes)
         return False
-
-    def check_weight_condition(self, box, current_weight):
-        if len(box.get_below_boxes()) > 0:
-            for below_box in box.get_below_boxes():
-                if below_box.get_maximumWeight() < current_weight:
-                    return False
-
-                if not self.check_weight_condition(below_box, current_weight+below_box.get_weight()):
-                    return False
-
-        return True
 
     def fillBin(self):
         self.reset_problem()
         result = self.branch_and_bound_filling([], self.boxList)
-        if result:
-            return True, self.boxList
-        else:
-            return False, []
+        if result == True:
+            self.update_best_filling(placed_boxes=self.boxList)
+            return []
+        placed_boxes = [box for (box, pos) in self.placement_best_solution]
+        not_placed_boxes = [box for box in self.boxList if box not in placed_boxes]
+        self.boxList = placed_boxes
+        return not_placed_boxes
 
     def reset_problem(self):
         for b in self.boxList:
             b.position = NOT_PLACED_POINT
-        self.F = F_INITIAL_VALUE
 
     def update_best_filling_value(self, new_F):
         if self.F < new_F:
@@ -443,7 +514,7 @@ class SingleBinProblem:
         else:
             return True
 
-    def getBoxesBelow(box, placed_boxes):
+    def getBoxesBelow(self, box, placed_boxes):
         to_place_box_y = box.get_pos_y()
 
         if to_place_box_y == 0:
@@ -467,7 +538,18 @@ class SingleBinProblem:
 
         return below_boxes
 
+    def add_boxes(self, to_add):
+        if isinstance(to_add, list):
+            for box in to_add:
+                self.boxList.append(box)
+        else:
+            self.boxList.append(to_add)
 
+    def update_best_filling(self, placed_boxes):
+        new_F = sum([b.volume for b in placed_boxes])
+        if self.F < new_F:
+            self.F = new_F
+            self.placement_best_solution = [(box, box.position) for box in placed_boxes]
 
 
 # FOR TEST PURPOSES
@@ -492,3 +574,37 @@ def getBoxesBelow(box, placed_boxes):
                 below_boxes.append(tmp_box)
 
     return below_boxes
+
+
+def H1(boxList, bin):
+    return -1
+
+
+def H2(boxList, bin):
+    box_set = [box for box in boxList]
+    sb_list = []
+    while box_set != []:
+        sb = SingleBinProblem(bin)
+        sb.add_boxes(box_set)
+        not_placed_boxes = sb.fillBin()
+        box_set = not_placed_boxes
+        sb_list.append(sb)
+    return sb_list
+
+
+class Search:
+
+    def __init__(self, allBoxes, bin):
+        self.Z = self.Z = max(H2(allBoxes, bin), H1(allBoxes, bin))
+        self.allBoxes = allBoxes
+        self.bin = bin
+
+    def search(self):
+        open_list = []
+        current_node = PalletizationModel(self.allBoxes, self.bin)
+        while not current_node.final_state():
+            neighborhood = current_node.get_neighborhood(current_node)
+            for n in neighborhood:
+                open_list.append(n)
+            current_node = open_list[len(open_list) - 1]
+        return current_node
