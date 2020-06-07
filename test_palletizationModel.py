@@ -10,6 +10,12 @@ def get_random_model(num_of_boxes):
     return ds.PalletizationModel(ds.Bin(10.0, 10.0, 10.0), boxList)
 
 
+def get_random_box_list(num_of_boxes):
+    random.seed(47)
+    boxList = [ds.Box(float(random.randint(1, 10)), float(random.randint(1, 10)), float(random.randint(1, 10))) for i in range(num_of_boxes)]
+    return boxList
+
+
 class TestPalletizationModel(TestCase):
 
     def test_2d_ordering(self):
@@ -299,10 +305,12 @@ class TestPalletizationModel(TestCase):
         sp.add_boxes(boxlist)
         sp.fillBin()
         boxlist2 = [ds.Box(5, 10, 5), ds.Box(5, 10, 5)]
-        new_sp = model.try_to_close(boxlist2, sp)
-        self.assertEqual(new_sp.open, False)
-        self.assertEqual(len(new_sp.boxList), 3)
-        self.assertEqual(len(boxlist2), 0)
+        model.M.append(sp)
+        model.boxList = boxlist2
+        model.try_to_close(0)
+        self.assertEqual(model.M[0].open, False)
+        self.assertEqual(len(model.M[0].boxList), 3)
+        self.assertEqual(len(model.boxList), 0)
         ########################################
         boxlist = [ds.Box(5, 20, 5), ds.Box(5, 10, 5), ds.Box(5, 10, 5)]
         bin = ds.Bin(5, 20, 10)
@@ -311,7 +319,48 @@ class TestPalletizationModel(TestCase):
         sp.add_boxes(boxlist)
         sp.fillBin()
         boxlist2 = [ds.Box(5, 10, 5)]
-        new_sp = model.try_to_close(boxlist2, sp)
-        self.assertEqual(new_sp.open, True)
-        self.assertEqual(len(new_sp.boxList), 3)
-        self.assertEqual(model.get_l2_bound(boxlist+boxlist2), 1)
+        model.M.append(sp)
+        model.boxList = boxlist2
+        model.try_to_close(0)
+        self.assertEqual(model.M[0].open, False)
+        self.assertEqual(len(model.boxList), 1)
+        self.assertEqual(model.get_l2_bound(boxlist+boxlist2), 2)
+
+    def test_search(self):
+        bin = ds.Bin(10, 10, 10)
+        box_list = get_random_box_list(50)
+        s = ds.Search(bin, box_list)
+        print s.Z
+        res = s.backtracking_search(ds.PalletizationModel(bin, box_list))
+        for m in res.M:
+            others = [m2 for m2 in res.M if m2 != m]
+            other_boxes = []
+            for m2 in others:
+                for (box2, _) in m2.placement_best_solution:
+                    other_boxes.append(box2)
+            for (box, point) in m.placement_best_solution:
+                if box in other_boxes:
+                    self.fail()
+                if point == ds.Point3D(-1, -1, -1):
+                    self.fail()
+        self.assertEqual(True, True)
+
+    def test_search_anytime(self):
+        bin = ds.Bin(10, 10, 10)
+        box_list = get_random_box_list(20)
+        model = ds.PalletizationModel(bin, box_list)
+        print model.get_l2_bound(model.boxList)
+        s = ds.Search(bin, box_list)
+        res = s.anytime_search(model)
+        for m in res.M:
+            others = [m2 for m2 in res.M if m2 != m]
+            other_boxes = []
+            for m2 in others:
+                for (box2, _) in m2.placement_best_solution:
+                    other_boxes.append(box2)
+            for (box, point) in m.placement_best_solution:
+                if box in other_boxes:
+                    self.fail()
+                if point == ds.Point3D(-1, -1, -1):
+                    self.fail()
+        self.assertEqual(True, True)

@@ -17,7 +17,6 @@ def get_fixed_model(num_of_boxes):
     boxList = [ds.Box(70, 70, 70) for i in range(num_of_boxes)]
     return ds.PalletizationModel(ds.Bin(100.0, 100.0, 100.0), boxList)
 
-
 if __name__ == '__main__':
     bin = ds.Bin(10, 10, 10)
     box_list = get_random_box_list(20)
