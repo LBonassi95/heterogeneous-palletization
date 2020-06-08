@@ -211,6 +211,19 @@ class TestPalletizationModel(TestCase):
         res = single_bin.fillBin()
         self.assertEqual(res, [])
 
+        single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        boxList = [ds.Box(500.0, 500.0, 500.0) for i in range(7)]
+        single_bin.boxList = boxList
+        res = single_bin.fillBin(m_cut=True, m=2)
+        self.assertEqual(res, [])
+
+        random.seed(47)
+        single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        boxList = [ds.Box(100.0, 200.0, 300.0) for i in range(150)]
+        single_bin.boxList = boxList
+        res = single_bin.fillBin(m_cut=True, m=1)
+        self.assertEqual(res, [])
+
     def test_below_boxes(self):
         box1 = ds.Box(4.0,5.0,3.0)
         box1.set_pos(0, 0, 0)
@@ -328,10 +341,10 @@ class TestPalletizationModel(TestCase):
 
     def test_search(self):
         bin = ds.Bin(10, 10, 10)
-        box_list = get_random_box_list(50)
-        s = ds.Search(bin, box_list)
+        box_list = get_random_box_list(20)
+        s = ds.Search(ds.PalletizationModel(bin, box_list))
         print s.Z
-        res = s.backtracking_search(ds.PalletizationModel(bin, box_list))
+        res = s.search()
         for m in res.M:
             others = [m2 for m2 in res.M if m2 != m]
             other_boxes = []
@@ -343,24 +356,65 @@ class TestPalletizationModel(TestCase):
                     self.fail()
                 if point == ds.Point3D(-1, -1, -1):
                     self.fail()
+        print len(res.M)
         self.assertEqual(True, True)
 
-    def test_search_anytime(self):
         bin = ds.Bin(10, 10, 10)
-        box_list = get_random_box_list(20)
-        model = ds.PalletizationModel(bin, box_list)
-        print model.get_l2_bound(model.boxList)
-        s = ds.Search(bin, box_list)
-        res = s.anytime_search(model)
-        for m in res.M:
-            others = [m2 for m2 in res.M if m2 != m]
-            other_boxes = []
-            for m2 in others:
-                for (box2, _) in m2.placement_best_solution:
-                    other_boxes.append(box2)
-            for (box, point) in m.placement_best_solution:
-                if box in other_boxes:
-                    self.fail()
-                if point == ds.Point3D(-1, -1, -1):
-                    self.fail()
-        self.assertEqual(True, True)
+        box_list1 = [ds.Box(2, 5, 3) for i in range(10)]
+        box_list2 = [ds.Box(4, 2, 1) for i in range(10)]
+        box_list3 = [ds.Box(1, 2, 2) for i in range(10)]
+        box_list = box_list1 + box_list2 + box_list3
+        s = ds.Search(ds.PalletizationModel(bin, box_list))
+        print s.Z
+        res = s.search()
+        self.assertEqual(res, "fail")
+
+        # bin = ds.Bin(10, 10, 10)
+        # box_list1 = [ds.Box(2, 5, 3) for i in range(10)]
+        # box_list2 = [ds.Box(4, 2, 5) for i in range(10)]
+        # box_list3 = [ds.Box(1, 5, 2) for i in range(10)]
+        # box_list = box_list1 + box_list2 + box_list3
+        # s = ds.Search(ds.PalletizationModel(bin, box_list))
+        # print s.Z
+        # res = s.search()
+        # for m in res.M:
+        #     others = [m2 for m2 in res.M if m2 != m]
+        #     other_boxes = []
+        #     for m2 in others:
+        #         for (box2, _) in m2.placement_best_solution:
+        #             other_boxes.append(box2)
+        #     for (box, point) in m.placement_best_solution:
+        #         if box in other_boxes:
+        #             self.fail()
+        #         if point == ds.Point3D(-1, -1, -1):
+        #             self.fail()
+        # print len(res.M)
+        # self.assertEqual(True, True)
+
+    # def test_search_anytime(self):
+    #     bin = ds.Bin(10, 10, 10)
+    #     box_list = get_random_box_list(20)
+    #     model = ds.PalletizationModel(bin, box_list)
+    #     print model.get_l2_bound(model.boxList)
+    #     s = ds.Search(bin, box_list)
+    #     res = s.anytime_search(model)
+    #     for m in res.M:
+    #         others = [m2 for m2 in res.M if m2 != m]
+    #         other_boxes = []
+    #         for m2 in others:
+    #             for (box2, _) in m2.placement_best_solution:
+    #                 other_boxes.append(box2)
+    #         for (box, point) in m.placement_best_solution:
+    #             if box in other_boxes:
+    #                 self.fail()
+    #             if point == ds.Point3D(-1, -1, -1):
+    #                 self.fail()
+    #     self.assertEqual(True, True)
+
+    # def test_H1(self):
+    #     bin = ds.Bin(10, 10, 10)
+    #     box_list1 = [ds.Box(2, 5, 3) for i in range(5)]
+    #     box_list2 = [ds.Box(4, 2, 1) for i in range(5)]
+    #     box_list3 = [ds.Box(1, 2, 2) for i in range(5)]
+    #     box_list = box_list1 + box_list2 + box_list3
+    #     ds.H1(box_list, bin)

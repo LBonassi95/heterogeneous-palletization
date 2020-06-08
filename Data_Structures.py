@@ -1,5 +1,6 @@
 # coding=utf-8
 import numpy as np
+import random
 
 F_INITIAL_VALUE = -1
 
@@ -266,6 +267,8 @@ class PalletizationModel:
     #             return sp
 
     def try_to_close(self, i):
+        if DEBUG:
+            print "sto provando achiudere una scatola"
         sp = self.M[i]
         try_to_place_list = []
         for j in self.boxList:
@@ -275,12 +278,13 @@ class PalletizationModel:
         if len(try_to_place_list) == 0:
             sp.open = False
         else:
-            sb_list = H2(sp.boxList + try_to_place_list, self.bin)
-            if len(sb_list) == 1:
-                sb_list[0].open = False
-                self.M[i] = sb_list[0]
-                for box in try_to_place_list:
-                    self.boxList.remove(box)
+            if not self.get_l2_bound(try_to_place_list) >= 2:
+                sb_list = H2(sp.boxList + try_to_place_list, self.bin)
+                if len(sb_list) == 1:
+                    sb_list[0].open = False
+                    self.M[i] = sb_list[0]
+                    for box in try_to_place_list:
+                        self.boxList.remove(box)
 
     def get_closed_bins(self):
         return len([m for m in self.M if m.open == False])
@@ -474,47 +478,51 @@ class SingleBinProblem:
         if not self.check_backtrack_condition(placed_boxes, VI):
             return False
 
-        for p in points:
-            # Dall'articolo é meglio ordinare le scatole per volume decrescente
-            for box in not_placed_boxes:
-                # piazzo una scatola
-                box.position = p
-                # qui si dovrá aggiungere il vincolo del peso.0
+        # TODO euristica nell'ordinamento delle scatole
+        possible_configuration = [(p, box) for p in points for box in not_placed_boxes]
 
-                if (box.get_end_x() <= self.bin.width and
-                        box.get_end_y() <= self.bin.height and
-                        box.get_end_z() <= self.bin.depth):
+        if m_cut:
+            if len(possible_configuration) > m:
+                possible_configuration = random.sample(possible_configuration, m)
 
-                    # start modifiche
+        for config in possible_configuration:
+            (p, box) = config
+            box.position = p
 
-                    below_boxes = self.getBoxesBelow(box, placed_boxes)
-                    if self.withWeight:
-                        box.set_below_boxes(below_boxes)
+            if (box.get_end_x() <= self.bin.width and
+                    box.get_end_y() <= self.bin.height and
+                    box.get_end_z() <= self.bin.depth):
 
-                        if self.check_weight_condition(box, box.weight):
-                            # piazzo la scatola ed eventualmente distribuisco il peso
-                            # per distribuire il peso servirà salvarsi un current_weight_supported o qualcosa del genere
-                            # ma per adesso controlla se funziona così
-                            new_placed_boxes = [b for b in placed_boxes] + [box]
-                            new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
+                # start modifiche
 
-                            if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
-                                return True
-                    else:
+                below_boxes = self.getBoxesBelow(box, placed_boxes)
+                if self.withWeight:
+                    box.set_below_boxes(below_boxes)
+
+                    if self.check_weight_condition(box, box.weight):
+                        # piazzo la scatola ed eventualmente distribuisco il peso
+                        # per distribuire il peso servirà salvarsi un current_weight_supported o qualcosa del genere
+                        # ma per adesso controlla se funziona così
                         new_placed_boxes = [b for b in placed_boxes] + [box]
                         new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
 
                         if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
                             return True
-                # ripristino la scatola, in quanto ho fallito
-                box.position = NOT_PLACED_POINT
-                box.set_below_boxes([])
+                else:
+                    new_placed_boxes = [b for b in placed_boxes] + [box]
+                    new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
+
+                    if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
+                        return True
+            # ripristino la scatola, in quanto ho fallito
+            box.position = NOT_PLACED_POINT
+            box.set_below_boxes([])
         self.update_best_filling(placed_boxes)
         return False
 
-    def fillBin(self):
+    def fillBin(self, m_cut=False, m=4):
         self.reset_problem()
-        result = self.branch_and_bound_filling([], self.boxList)
+        result = self.branch_and_bound_filling([], self.boxList, m_cut, m)
         if result == True:
             self.update_best_filling(placed_boxes=self.boxList)
             return []
@@ -604,12 +612,38 @@ def getBoxesBelow(box, placed_boxes):
     return below_boxes
 
 
-def H1(boxList, bin):
-    return -1
+# def get_k(box_set, bin):
+#     tot = 0
+#     for i in range(len(box_set)):
+#         box = box_set[i]
+#         if tot + box.width * box.height < 2 * bin.width * bin.height:
+#             tot += box.width * box.height
+#         else:
+#             return i
+#
+#
+# def H1(box_set, bin):
+#     box_sorted = sorted(box_set, key=lambda box: box.get_depth(), reverse=True)
+#     while box_sorted != []:
+#         k = get_k(box_sorted, bin)
+#         box_set_prime = box_sorted[:k]
+#         box_set_prime = sorted(box_set_prime, key=lambda box: box.get_height(), reverse=False)
+#
+#         #da sistemare
+#
+#
+# def get_slice(boxes, bin):
+#     not_placed = boxes
+#     placed = []
+#     sb = SingleBinProblem(bin)
+#
+#     points = sb.two_dimensional_corners(placed, not_placed)
 
 
-def H2(boxList, bin):
-    box_set = [box for box in boxList]
+
+
+def H2(box_set, bin):
+    box_set = [box for box in box_set]
     box_set = sorted(box_set, key=lambda box: box.get_volume(), reverse=False)
     sb_list = []
     while box_set != []:
@@ -621,17 +655,12 @@ def H2(boxList, bin):
     return sb_list
 
 
-
-
-
 class Search:
 
-    def __init__(self, bin, allBoxes):
-        allBoxes = sorted(allBoxes, key=lambda box: box.get_volume(), reverse=True)
-        #da provare tutte le rotazioni
-        self.Z = len(H2(allBoxes, bin))
-        self.allBoxes = allBoxes
-        self.bin = bin
+    def __init__(self, first_problem):
+        self.first_problem = first_problem
+        self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
+        self.Z = len(H2(first_problem.boxList, first_problem.bin))
 
     # def search(self):
     #     open_list = []
@@ -643,7 +672,8 @@ class Search:
     #         current_node = open_list[len(open_list) - 1]
     #     return current_node
 
-    def anytime_search(self, first_problem):
+    def anytime_search(self):
+        first_problem = self.first_problem
         result = self.backtracking_search(first_problem)
         if result == "fail":
             print "cannot improve over first solution"
@@ -653,6 +683,9 @@ class Search:
             result = self.backtracking_search(first_problem)
         print self.Z
         return result
+
+    def search(self):
+        return self.backtracking_search(self.first_problem)
 
     def backtracking_search(self, current_problem):
         not_placed_boxes = current_problem.boxList
@@ -668,11 +701,17 @@ class Search:
                 new_p, single_bin_result = self.assign_box_to_bin(box, current_problem, i, not_placed_boxes)
                 if single_bin_result == []:
                     new_p.try_to_close(i)
+                    if DEBUG:
+                        print "profondita: " + str(len(current_problem.M))
+                        print "assegno la scatola numero " + str(len(not_placed_boxes) - 1) + " al bin " + str(i)
                     result = self.backtracking_search(new_p)
                     if result != "fail":
                         return result
         if len(current_problem.M) < self.Z - 1:
             new_p = self.assign_box_to_new_bin(box, current_problem, not_placed_boxes)
+            if DEBUG:
+                print "profondita: " + str(len(current_problem.M))
+                print "assegno la scatola numero " + str(len(not_placed_boxes) - 1) + " ad un nuovo bin "
             result = self.backtracking_search(new_p)
             if result != "fail":
                 return result
@@ -680,12 +719,12 @@ class Search:
 
     def assign_box_to_new_bin(self, box, current_problem, not_placed_boxes):
         # da ottimizzare per il caso in cui non ci stia (calcolare l2)
-        new_sbp = SingleBinProblem(self.bin)
+        new_sbp = SingleBinProblem(current_problem.bin)
         new_sbp.add_boxes(box)
         new_sbp.fillBin()
         new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
         new_bins = [sbp.__copy__() for sbp in current_problem.M]
-        new_p = PalletizationModel(self.bin, new_not_placed_boxes, new_bins + [new_sbp])
+        new_p = PalletizationModel(current_problem.bin, new_not_placed_boxes, new_bins + [new_sbp])
         new_p.try_to_close(len(new_p.M) - 1)
         return new_p
 
@@ -695,6 +734,10 @@ class Search:
         new_p.boxList = new_not_placed_boxes
         new_sbp = new_p.M[i]
         new_sbp.add_boxes(box)
+        h2_result = H2(new_p.boxList, new_p.bin)
+        if len(h2_result) == 1:
+            new_p.M[i] = h2_result[0]
+            return new_p, []
         single_bin_result = new_sbp.fillBin()
         return new_p, single_bin_result
 
@@ -704,3 +747,28 @@ class Search:
             if not l2 >= 2:
                 return True
         return False
+
+    # def get_box_set_according_to_l2(self, problem, boxList):
+    #     placeble_in_one_bin = []
+    #     while boxList != []:
+    #         if not problem.get_l2_bound(placeble_in_one_bin + [boxList[0]]) >= 2:
+    #             box = boxList.pop()
+    #             placeble_in_one_bin.append(box)
+    #         else:
+    #             return placeble_in_one_bin
+    #
+    # def H2(self, problem):
+    #     bin = problem.bin
+    #     box_set = [box for box in problem.boxList]
+    #     box_set = sorted(box_set, key=lambda box: box.get_volume(), reverse=False)
+    #     sb_list = []
+    #     while box_set != []:
+    #         sb = SingleBinProblem(bin)
+    #         placeble_in_one_bin = self.get_box_set_according_to_l2(problem, box_set)
+    #         sb.add_boxes(placeble_in_one_bin)
+    #         not_placed_boxes = sb.fillBin(m_cut=True, m=2)
+    #         box_set = box_set + not_placed_boxes
+    #         sb_list.append(sb)
+    #     return sb_list
+
+
