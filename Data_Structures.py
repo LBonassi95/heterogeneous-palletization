@@ -4,8 +4,8 @@ import random
 
 F_INITIAL_VALUE = -1
 
-DEBUG = True
-DEFAULT_MAX_WEIGHT = 10
+DEBUG = False
+DEFAULT_MAX_WEIGHT = 1e10
 DEFAULT_WEIGHT = 1
 
 
@@ -16,10 +16,17 @@ class Box:
         self.depth = depth
         self.volume = self.width * self.height * self.depth
         self.weight = DEFAULT_WEIGHT
-        self.assigned = False
         self.position = NOT_PLACED_POINT
         self.belowBoxes = []
         self.maximumWeight = DEFAULT_MAX_WEIGHT
+
+    def copy(self):
+        new_box = Box(self.width, self.height, self.depth)
+        new_box.weight = self.weight
+        new_box.position = Point3D(self.position.x, self.position.y, self.position.z)
+        new_box.belowBoxes = []
+        new_box.maximumWeight = self.maximumWeight
+        return new_box
 
     def get_maximumWeight(self):
         return self.maximumWeight
@@ -75,6 +82,10 @@ class Box:
     def is_placed(self):
         return self.position == NOT_PLACED_POINT
 
+    def __eq__(self, other):
+        return isinstance(other, Box) and self.position == other.position and self.width == other.width \
+               and self.height == other.height and \
+               self.depth == other.depth
 
 class Point2D:
     def __init__(self, x, y):
@@ -344,6 +355,11 @@ class SingleBinProblem:
         self.F = F_INITIAL_VALUE
         self.placement_best_solution = []
         self.withWeight = False
+        self.node_count = 0
+        self.max_nodes = 5000
+        self.m_cut = False
+        self.m = 4
+        self.placement_best_solution2 = []
 
     def __copy__(self):
         copy = SingleBinProblem(self.bin)
@@ -469,7 +485,21 @@ class SingleBinProblem:
 
         return True
 
-    def branch_and_bound_filling(self, placed_boxes, not_placed_boxes, m_cut=False, m=4):
+    def fillBin(self):
+        self.node_count = 0
+        self.reset_problem()
+        result = self.branch_and_bound_filling([], self.boxList)
+        if DEBUG:
+            print self.node_count
+        if result == True:
+            self.update_best_filling(placed_boxes=self.boxList)
+            return []
+        placed_boxes = [box for (box, pos) in self.placement_best_solution]
+        not_placed_boxes = [box for box in self.boxList if box not in placed_boxes]
+        self.boxList = placed_boxes
+        return not_placed_boxes
+
+    def branch_and_bound_filling(self, placed_boxes, not_placed_boxes):
         if len(not_placed_boxes) == 0:
             return True
 
@@ -477,13 +507,16 @@ class SingleBinProblem:
 
         if not self.check_backtrack_condition(placed_boxes, VI):
             return False
+        self.node_count += 1
 
         # TODO euristica nell'ordinamento delle scatole
-        possible_configuration = [(p, box) for p in points for box in not_placed_boxes]
+        possible_configuration = [(p, box) for box in not_placed_boxes for p in points]
 
-        if m_cut:
-            if len(possible_configuration) > m:
-                possible_configuration = random.sample(possible_configuration, m)
+        if self.m_cut:
+            if self.node_count > self.max_nodes:
+                return False
+            if len(possible_configuration) > self.m:
+                possible_configuration = possible_configuration[:self.m]
 
         for config in possible_configuration:
             (p, box) = config
@@ -495,8 +528,8 @@ class SingleBinProblem:
 
                 # start modifiche
 
-                below_boxes = self.getBoxesBelow(box, placed_boxes)
                 if self.withWeight:
+                    below_boxes = self.getBoxesBelow(box, placed_boxes)
                     box.set_below_boxes(below_boxes)
 
                     if self.check_weight_condition(box, box.weight):
@@ -505,31 +538,22 @@ class SingleBinProblem:
                         # ma per adesso controlla se funziona così
                         new_placed_boxes = [b for b in placed_boxes] + [box]
                         new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
-
-                        if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
+                        if self.m_cut and self.node_count > self.max_nodes:
+                            return False
+                        elif self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
                             return True
                 else:
                     new_placed_boxes = [b for b in placed_boxes] + [box]
                     new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
-
-                    if self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
+                    if self.m_cut and self.node_count > self.max_nodes:
+                        return False
+                    elif self.branch_and_bound_filling(new_placed_boxes, new_not_placed_boxes):
                         return True
             # ripristino la scatola, in quanto ho fallito
             box.position = NOT_PLACED_POINT
             box.set_below_boxes([])
         self.update_best_filling(placed_boxes)
         return False
-
-    def fillBin(self, m_cut=False, m=4):
-        self.reset_problem()
-        result = self.branch_and_bound_filling([], self.boxList, m_cut, m)
-        if result == True:
-            self.update_best_filling(placed_boxes=self.boxList)
-            return []
-        placed_boxes = [box for (box, pos) in self.placement_best_solution]
-        not_placed_boxes = [box for box in self.boxList if box not in placed_boxes]
-        self.boxList = placed_boxes
-        return not_placed_boxes
 
     def reset_problem(self):
         for b in self.boxList:
@@ -586,6 +610,53 @@ class SingleBinProblem:
         if self.F < new_F:
             self.F = new_F
             self.placement_best_solution = [(box, box.position) for box in placed_boxes]
+            self.placement_best_solution2 = placed_boxes
+
+    def branch_and_bound_filling_iter(self):
+        first = ([], self.boxList)
+        stack = [first]
+        while len(stack) > 0:
+            p_b, n_p_b = stack.pop()
+            if len(p_b) == 8:
+                print "test"
+            if n_p_b == []:
+                self.update_best_filling(p_b)
+                return True
+            points, VI = self.three_dimensional_corners(p_b, n_p_b)
+            self.update_best_filling(p_b)
+            if self.check_backtrack_condition(p_b, VI):
+                possible_configuration = [(p, box) for box in n_p_b for p in points]
+                for config in possible_configuration:
+                    (p, box_original) = config
+                    to_place = box_original.copy()
+                    to_place.position = p
+                    if (to_place.get_end_x() <= self.bin.width and
+                            to_place.get_end_y() <= self.bin.height and
+                            to_place.get_end_z() <= self.bin.depth):
+                        new_p_b = self.copy_box_stack(p_b)
+                        below_boxes = self.getBoxesBelow(to_place, new_p_b)
+                        to_place.set_below_boxes(below_boxes)
+                        if self.check_weight_condition(to_place, to_place.weight):
+                            new_p_b.append(to_place)
+                            new_n_p_b = [box.copy() for box in n_p_b if box != box_original]
+                            stack.append((new_p_b, new_n_p_b))
+        return False
+
+    def copy_box_stack(self, p_b):
+        new_boxes = []
+        for box in p_b:
+            new_box = box.copy()
+            new_boxes.append(new_box)
+            for box_below in box.get_below_boxes():
+                box_b = self.get_equal_box(box_below, new_boxes)
+                new_box.belowBoxes.append(box_b)
+        return new_boxes
+
+    def get_equal_box(self, box, boxes):
+        for b in boxes:
+            if box == b:
+                return b
+        return None
 
 
 # FOR TEST PURPOSES
@@ -640,15 +711,17 @@ def getBoxesBelow(box, placed_boxes):
 #     points = sb.two_dimensional_corners(placed, not_placed)
 
 
-
-
-def H2(box_set, bin):
+def H2(box_set, bin, m_cut=False, m=4, max_nodes=5000, with_weight=False):
     box_set = [box for box in box_set]
     box_set = sorted(box_set, key=lambda box: box.get_volume(), reverse=False)
     sb_list = []
     while box_set != []:
         sb = SingleBinProblem(bin)
         sb.add_boxes(box_set)
+        sb.max_nodes = max_nodes
+        sb.m_cut = m_cut
+        sb.m = m
+        sb.withWeight = with_weight
         not_placed_boxes = sb.fillBin()
         box_set = not_placed_boxes
         sb_list.append(sb)
@@ -747,28 +820,3 @@ class Search:
             if not l2 >= 2:
                 return True
         return False
-
-    # def get_box_set_according_to_l2(self, problem, boxList):
-    #     placeble_in_one_bin = []
-    #     while boxList != []:
-    #         if not problem.get_l2_bound(placeble_in_one_bin + [boxList[0]]) >= 2:
-    #             box = boxList.pop()
-    #             placeble_in_one_bin.append(box)
-    #         else:
-    #             return placeble_in_one_bin
-    #
-    # def H2(self, problem):
-    #     bin = problem.bin
-    #     box_set = [box for box in problem.boxList]
-    #     box_set = sorted(box_set, key=lambda box: box.get_volume(), reverse=False)
-    #     sb_list = []
-    #     while box_set != []:
-    #         sb = SingleBinProblem(bin)
-    #         placeble_in_one_bin = self.get_box_set_according_to_l2(problem, box_set)
-    #         sb.add_boxes(placeble_in_one_bin)
-    #         not_placed_boxes = sb.fillBin(m_cut=True, m=2)
-    #         box_set = box_set + not_placed_boxes
-    #         sb_list.append(sb)
-    #     return sb_list
-
-

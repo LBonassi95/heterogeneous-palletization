@@ -16,6 +16,15 @@ def get_random_box_list(num_of_boxes):
     return boxList
 
 
+def get_random_box_list_with_weight(num_of_boxes):
+    random.seed(47)
+    boxList = [ds.Box(float(random.randint(1, 10)), float(random.randint(1, 10)), float(random.randint(1, 10))) for i in range(num_of_boxes)]
+    for box in boxList:
+        box.maximumWeight = random.randint(10, 20)
+        box.weight = random.randint(1, 7)
+    return boxList
+
+
 class TestPalletizationModel(TestCase):
 
     def test_2d_ordering(self):
@@ -214,15 +223,45 @@ class TestPalletizationModel(TestCase):
         single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
         boxList = [ds.Box(500.0, 500.0, 500.0) for i in range(7)]
         single_bin.boxList = boxList
-        res = single_bin.fillBin(m_cut=True, m=2)
+        res = single_bin.fillBin()
         self.assertEqual(res, [])
 
         random.seed(47)
         single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
         boxList = [ds.Box(100.0, 200.0, 300.0) for i in range(150)]
         single_bin.boxList = boxList
-        res = single_bin.fillBin(m_cut=True, m=1)
+        res = single_bin.fillBin()
         self.assertEqual(res, [])
+
+    def test_single_bin_filling_iter(self):
+        single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        boxList = [ds.Box(500.0, 500.0, 500.0) for i in range(7)]
+        single_bin.boxList = boxList
+        res = single_bin.branch_and_bound_filling_iter()
+        self.assertEqual(len(single_bin.placement_best_solution), 7)
+        self.assertEqual(res, True)
+
+        boxList.append(ds.Box(500.0, 500.0, 500.0))
+        res = single_bin.branch_and_bound_filling_iter()
+        self.assertEqual(res, True)
+
+        boxList.append(ds.Box(500.0, 500.0, 500.0))
+        res = single_bin.branch_and_bound_filling_iter()
+        self.assertEqual(res, False)
+
+        bin = ds.Bin(10, 50, 10)
+        box_list = get_random_box_list_with_weight(10)
+        sb = ds.SingleBinProblem(bin)
+        sb.boxList = box_list
+        res = sb.branch_and_bound_filling_iter()
+        self.assertEqual(res, True)
+
+        random.seed(47)
+        single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        boxList = [ds.Box(100.0, 200.0, 300.0) for i in range(150)]
+        single_bin.boxList = boxList
+        res = single_bin.branch_and_bound_filling_iter()
+        self.assertEqual(res, True)
 
     def test_below_boxes(self):
         box1 = ds.Box(4.0,5.0,3.0)
@@ -286,7 +325,7 @@ class TestPalletizationModel(TestCase):
 
         box_sopra_sopra = ds.Box(6.0, 5.0, 6.0)
         box_sopra_sopra.set_pos(0, 10, 0)
-        box_sopra_sopra.set_weight(ds.DEFAULT_MAX_WEIGHT )
+        box_sopra_sopra.set_weight(ds.DEFAULT_MAX_WEIGHT)
 
         single_bin = ds.SingleBinProblem(ds.Bin(6, 15, 6))
         boxList = [box6, box7, box8, box9, box0]
@@ -309,6 +348,25 @@ class TestPalletizationModel(TestCase):
         model = ds.PalletizationModel(bin, box_list)
         num_bin = ds.H2(model.boxList, model.bin)
         self.assertEqual(len(num_bin), 1)
+
+        bin = ds.Bin(10, 20, 15)
+        box_list = [ds.Box(5, 20, 10), ds.Box(5, 20, 10), ds.Box(10, 20, 5)]
+        model = ds.PalletizationModel(bin, box_list)
+        num_bin = ds.H2(model.boxList, model.bin)
+        self.assertEqual(len(num_bin), 1)
+
+        bin = ds.Bin(15, 15, 15)
+        box_list = get_random_box_list(250)
+        model = ds.PalletizationModel(bin, box_list)
+        num_bin = ds.H2(model.boxList, model.bin, m_cut=True, m=2, max_nodes=501)
+        self.assertEqual(len(num_bin), 64)
+        print len(num_bin)
+
+        bin = ds.Bin(15, 15, 15)
+        box_list = get_random_box_list_with_weight(250)
+        model = ds.PalletizationModel(bin, box_list)
+        num_bin = ds.H2(model.boxList, model.bin, m_cut=True, m=2, max_nodes=501, with_weight=True)
+        print len(num_bin)
 
     def test_try_to_close(self):
         boxlist = [ds.Box(5, 20, 5)]
@@ -369,11 +427,8 @@ class TestPalletizationModel(TestCase):
         res = s.search()
         self.assertEqual(res, "fail")
 
-        # bin = ds.Bin(10, 10, 10)
-        # box_list1 = [ds.Box(2, 5, 3) for i in range(10)]
-        # box_list2 = [ds.Box(4, 2, 5) for i in range(10)]
-        # box_list3 = [ds.Box(1, 5, 2) for i in range(10)]
-        # box_list = box_list1 + box_list2 + box_list3
+        # bin = ds.Bin(15, 15, 15)
+        # box_list = get_random_box_list(250)
         # s = ds.Search(ds.PalletizationModel(bin, box_list))
         # print s.Z
         # res = s.search()
