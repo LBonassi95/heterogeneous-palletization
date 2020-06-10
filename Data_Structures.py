@@ -7,6 +7,7 @@ F_INITIAL_VALUE = -1
 DEBUG = False
 DEFAULT_MAX_WEIGHT = 1e10
 DEFAULT_WEIGHT = 1
+DEFAULT_ITEM_NAME = "box"
 
 
 class Box:
@@ -19,6 +20,7 @@ class Box:
         self.position = NOT_PLACED_POINT
         self.belowBoxes = []
         self.maximumWeight = DEFAULT_MAX_WEIGHT
+        self.itemName = DEFAULT_ITEM_NAME
 
     def copy(self):
         new_box = Box(self.width, self.height, self.depth)
@@ -26,6 +28,7 @@ class Box:
         new_box.position = Point3D(self.position.x, self.position.y, self.position.z)
         new_box.belowBoxes = []
         new_box.maximumWeight = self.maximumWeight
+        new_box.itemName = self.itemName
         return new_box
 
     def get_maximumWeight(self):
@@ -630,9 +633,7 @@ class SingleBinProblem:
                     (p, box_original) = config
                     to_place = box_original.copy()
                     to_place.position = p
-                    if (to_place.get_end_x() <= self.bin.width and
-                            to_place.get_end_y() <= self.bin.height and
-                            to_place.get_end_z() <= self.bin.depth):
+                    if self.pos_condition(to_place):
                         new_p_b = self.copy_box_stack(p_b)
                         below_boxes = self.getBoxesBelow(to_place, new_p_b)
                         to_place.set_below_boxes(below_boxes)
@@ -641,6 +642,44 @@ class SingleBinProblem:
                             new_n_p_b = [box.copy() for box in n_p_b if box != box_original]
                             stack.append((new_p_b, new_n_p_b))
         return False
+
+    def branch_and_bound_filling_iter_item_similarity(self):
+        first = ([], self.boxList)
+        stack = [first]
+        while len(stack) > 0:
+            p_b, n_p_b = stack.pop()
+            if len(p_b) == 8:
+                print "test"
+            if n_p_b == []:
+                self.update_best_filling(p_b)
+                return True
+            points, VI = self.three_dimensional_corners(p_b, n_p_b)
+            self.update_best_filling(p_b)
+            if self.check_backtrack_condition(p_b, VI):
+                possible_configuration = [(p, box) for box in n_p_b for p in points]
+                for config in possible_configuration:
+                    (p, box_original) = config
+                    to_place = box_original.copy()
+                    to_place.position = p
+                    if self.pos_condition(to_place) and self.similarity_condition(to_place, p_b):
+                        new_p_b = self.copy_box_stack(p_b)
+                        below_boxes = self.getBoxesBelow(to_place, new_p_b)
+                        to_place.set_below_boxes(below_boxes)
+                        if self.check_weight_condition(to_place, to_place.weight):
+                            new_p_b.append(to_place)
+                            new_n_p_b = [box.copy() for box in n_p_b if box != box_original]
+                            stack.append((new_p_b, new_n_p_b))
+        return False
+
+    def pos_condition(self, box):
+        return (box.get_end_x() <= self.bin.width and box.get_end_y() <= self.bin.height
+                and box.get_end_z() <= self.bin.depth)
+
+    def similarity_condition(self, to_place, p_b):
+        for box in p_b:
+            if box.position.y == to_place.position.y and box.itemName != to_place.itemName:
+                return False
+        return True
 
     def copy_box_stack(self, p_b):
         new_boxes = []
@@ -657,6 +696,7 @@ class SingleBinProblem:
             if box == b:
                 return b
         return None
+
 
 
 # FOR TEST PURPOSES
