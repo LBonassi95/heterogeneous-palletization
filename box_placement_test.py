@@ -291,22 +291,6 @@ if __name__ == '__main__':
         # res = sb.branch_and_bound_filling_iter()
         # place_boxes(vs060, sb.placement_best_solution2, 0.1)
 
-        # bin = ds.Bin(30, 50, 20)
-        # box_list1 = [ds.Box(2, 3, 4) for i in range(15)]
-        # for box in box_list1:
-        #     box.itemName = "item1"
-        # box_list2 = [ds.Box(4, 5, 2) for i in range(15)]
-        # for box in box_list2:
-        #     box.itemName = "item2"
-        # box_list3 = [ds.Box(6, 2, 3) for i in range(15)]
-        # for box in box_list3:
-        #     box.itemName = "item3"
-        # box_list = box_list1 + box_list2 + box_list3
-        # sb = ds.SingleBinProblem(bin)
-        # sb.boxList = box_list
-        # res = sb.branch_and_bound_filling_iter_item_similarity()
-        # place_boxes(vs060, sb.placement_best_solution2, 1)
-
 
     except rospy.ROSInterruptException:
         pass

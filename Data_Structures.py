@@ -260,26 +260,7 @@ class PalletizationModel:
         value = np.ceil((alpha - beta) / self.bin.get_volume())
         return l1_val + max(0, value)
 
-    # def try_to_close(self, left_box_list, sp):
-    #     sp = sp.__copy__()
-    #     try_to_place_list = []
-    #     for j in left_box_list:
-    #         to_check = sp.boxList + [j]
-    #         if not self.get_l2_bound(to_check) >= 2:
-    #             try_to_place_list.append(j)
-    #     if len(try_to_place_list) == 0:
-    #         sp.open = False
-    #         return sp
-    #     else:
-    #         sb_list = H2(sp.boxList + try_to_place_list, self.bin)
-    #         if len(sb_list) == 1:
-    #             sb_list[0].open = False
-    #             for box in try_to_place_list:
-    #                 left_box_list.remove(box)
-    #             return sb_list[0]
-    #         else:
-    #             return sp
-
+    #ALGORITMO PER CERCARE DI CHIUDERE IL BIN i-ESIMO, VEDI Main Branching Tree sull'articolo
     def try_to_close(self, i):
         if DEBUG:
             print "sto provando achiudere una scatola"
@@ -303,51 +284,6 @@ class PalletizationModel:
     def get_closed_bins(self):
         return len([m for m in self.M if m.open == False])
 
-    # def get_neighbor_new_open_bin(self, next_box, incumbent):
-    #     left_box_list = [box for box in self.boxList if box != next_box]
-    #     sp = SingleBinProblem(self.bin)
-    #     sp.add_boxes(next_box)
-    #     sp.fillBin()
-    #     result, sp = self.try_to_close(left_box_list, sp)
-    #     new_node = PalletizationModel(self.bin, left_box_list,
-    #                                   [s.__copy__() for s in self.M] + [sp])
-    #     if sp.open == False:
-    #         l2 = self.get_l2_bound(left_box_list)
-    #         if not l2 + len([spc for spc in new_node.M if spc.open == False]) >= incumbent:
-    #             return new_node
-    #         else:
-    #             return None
-    #     else:
-    #         return new_node
-    #
-    # def get_closed_bins(self):
-    #     dim = len([c for c in self.M if c.open == False])
-    #     return dim
-
-    # def get_neighbor(self, i, next_box):
-    #     new_M = [s.__copy__() for s in self.M]
-    #     sb = new_M[i]
-    #     if not self.get_l2_bound(sb.boxList + [next_box]) >= 2:
-    #         sb_H2 = H2(sb.boxList + [next_box], self.bin)
-    #         # DA AGGIUNGERE H1
-    #         if len(sb_H2) == 1:
-    #             new_M[i] = sb_H2[0]
-    #             new_M[i].try_to_close()
-    #             return new_M
-    #         else:
-    #             result = sb.fillBin()
-    #             if result == []:
-    #                 new_M[i].try_to_close()
-    #                 return new_M
-    #
-    # def get_neighborhood(self, node, incumbent):
-    #     next_box = self.boxList[0]
-    #     neighborhood = []
-    #     if len(node.M) < self.Z - 1:
-    #         new_node = self.get_neighbor_new_open_bin(next_box)
-    #     for i in range(self.M):
-    #         pass
-
 
 class SingleBinProblem:
 
@@ -362,7 +298,7 @@ class SingleBinProblem:
         self.max_nodes = 5000
         self.m_cut = False
         self.m = 4
-        self.placement_best_solution2 = []
+        self.placement_best_solution2 = [] #DA CANCELLARE IN FUTURO, SOLO PER TEST
 
     def __copy__(self):
         copy = SingleBinProblem(self.bin)
@@ -487,7 +423,7 @@ class SingleBinProblem:
                     return False
 
         return True
-
+    #QUESTI SARANNO DA SOSTITUIRE#######################################################################################
     def fillBin(self):
         self.node_count = 0
         self.reset_problem()
@@ -557,6 +493,7 @@ class SingleBinProblem:
             box.set_below_boxes([])
         self.update_best_filling(placed_boxes)
         return False
+    ####################################################################################################################
 
     def reset_problem(self):
         for b in self.boxList:
@@ -615,6 +552,7 @@ class SingleBinProblem:
             self.placement_best_solution = [(box, box.position) for box in placed_boxes]
             self.placement_best_solution2 = placed_boxes
 
+    #VERSIONE ITERATIVA, DA AGGIUNGERE VINCOLI SULLA RICERCA
     def branch_and_bound_filling_iter(self):
         first = ([], self.boxList)
         stack = [first]
@@ -643,34 +581,6 @@ class SingleBinProblem:
                             stack.append((new_p_b, new_n_p_b))
         return False
 
-    def branch_and_bound_filling_iter_item_similarity(self):
-        first = ([], self.boxList)
-        stack = [first]
-        while len(stack) > 0:
-            p_b, n_p_b = stack.pop()
-            if len(p_b) == 8:
-                print "test"
-            if n_p_b == []:
-                self.update_best_filling(p_b)
-                return True
-            points, VI = self.three_dimensional_corners(p_b, n_p_b)
-            self.update_best_filling(p_b)
-            if self.check_backtrack_condition(p_b, VI):
-                possible_configuration = [(p, box) for box in n_p_b for p in points]
-                for config in possible_configuration:
-                    (p, box_original) = config
-                    to_place = box_original.copy()
-                    to_place.position = p
-                    if self.pos_condition(to_place) and self.similarity_condition(to_place, p_b):
-                        new_p_b = self.copy_box_stack(p_b)
-                        below_boxes = self.getBoxesBelow(to_place, new_p_b)
-                        to_place.set_below_boxes(below_boxes)
-                        if self.check_weight_condition(to_place, to_place.weight):
-                            new_p_b.append(to_place)
-                            new_n_p_b = [box.copy() for box in n_p_b if box != box_original]
-                            stack.append((new_p_b, new_n_p_b))
-        return False
-
     def pos_condition(self, box):
         return (box.get_end_x() <= self.bin.width and box.get_end_y() <= self.bin.height
                 and box.get_end_z() <= self.bin.depth)
@@ -681,6 +591,7 @@ class SingleBinProblem:
                 return False
         return True
 
+    #PER COPIARE UNA LISTA DI SCATOLE MANTENENDO CORRETTAMENTE ANCHE QUELLE SOTTO
     def copy_box_stack(self, p_b):
         new_boxes = []
         for box in p_b:
@@ -697,60 +608,7 @@ class SingleBinProblem:
                 return b
         return None
 
-
-
-# FOR TEST PURPOSES
-def getBoxesBelow(box, placed_boxes):
-    to_place_box_y = box.get_pos_y()
-
-    if to_place_box_y == 0:
-        return []
-
-    to_place_box_end_x = box.get_end_x()
-    to_place_box_start_x = box.get_pos_x()
-    to_place_box_end_z = box.get_end_z()
-    to_place_box_start_z = box.get_pos_z()
-
-    below_boxes = []
-    for tmp_box in placed_boxes:
-        if to_place_box_y == tmp_box.get_end_y():
-            condition_x = not (tmp_box.get_pos_x() >= to_place_box_end_x or tmp_box.get_end_x() <= to_place_box_start_x)
-            condition_z = not (tmp_box.get_pos_z() >= to_place_box_end_z or tmp_box.get_end_z() <= to_place_box_start_z)
-
-            if condition_x and condition_z:
-                below_boxes.append(tmp_box)
-
-    return below_boxes
-
-
-# def get_k(box_set, bin):
-#     tot = 0
-#     for i in range(len(box_set)):
-#         box = box_set[i]
-#         if tot + box.width * box.height < 2 * bin.width * bin.height:
-#             tot += box.width * box.height
-#         else:
-#             return i
-#
-#
-# def H1(box_set, bin):
-#     box_sorted = sorted(box_set, key=lambda box: box.get_depth(), reverse=True)
-#     while box_sorted != []:
-#         k = get_k(box_sorted, bin)
-#         box_set_prime = box_sorted[:k]
-#         box_set_prime = sorted(box_set_prime, key=lambda box: box.get_height(), reverse=False)
-#
-#         #da sistemare
-#
-#
-# def get_slice(boxes, bin):
-#     not_placed = boxes
-#     placed = []
-#     sb = SingleBinProblem(bin)
-#
-#     points = sb.two_dimensional_corners(placed, not_placed)
-
-
+#Algoritmo per trovare la soluzione iniziale
 def H2(box_set, bin, m_cut=False, m=4, max_nodes=5000, with_weight=False):
     box_set = [box for box in box_set]
     box_set = sorted(box_set, key=lambda box: box.get_volume(), reverse=False)
@@ -775,31 +633,10 @@ class Search:
         self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
         self.Z = len(H2(first_problem.boxList, first_problem.bin))
 
-    # def search(self):
-    #     open_list = []
-    #     current_node = PalletizationModel(self.allBoxes, self.bin)
-    #     while not current_node.final_state():
-    #         neighborhood = current_node.get_neighborhood(current_node)
-    #         for n in neighborhood:
-    #             open_list.append(n)
-    #         current_node = open_list[len(open_list) - 1]
-    #     return current_node
-
-    def anytime_search(self):
-        first_problem = self.first_problem
-        result = self.backtracking_search(first_problem)
-        if result == "fail":
-            print "cannot improve over first solution"
-            return result
-        while result != "fail" and len(result.M) < self.Z:
-            self.Z = len(result.M)
-            result = self.backtracking_search(first_problem)
-        print self.Z
-        return result
-
     def search(self):
         return self.backtracking_search(self.first_problem)
 
+    #Main Branching Tree dell'articolo
     def backtracking_search(self, current_problem):
         not_placed_boxes = current_problem.boxList
         if current_problem.get_l2_bound(current_problem.boxList) + current_problem.get_closed_bins() >= self.Z:
