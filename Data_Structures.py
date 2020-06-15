@@ -381,7 +381,7 @@ class SingleBinProblem:
         # find the minimum depth in the J boxes list
         minimum_d = J[0].get_depth()
         for box in J:
-            if box.get_depth() > minimum_d:
+            if box.get_depth() < minimum_d:
                 minimum_d = box.get_depth()
 
         total_corners = []
