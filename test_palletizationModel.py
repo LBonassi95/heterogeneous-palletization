@@ -452,3 +452,166 @@ class TestPalletizationModel(TestCase):
         print s.Z
         res = s.search()
         self.assertEqual(res, "fail")
+
+    def test_next_to(self):
+        sb = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        box1 = ds.Box(2, 2, 2)
+        box2 = ds.Box(2, 2, 2)
+
+        box1.position = ds.Point3D(2, 0, 1)
+        box2.position = ds.Point3D(2, 0, 3)
+
+        self.assertEqual(True, sb.next_to(box1, box2))
+
+        box1.position = ds.Point3D(0, 0, 3)
+        box2.position = ds.Point3D(2, 0, 3)
+
+        self.assertEqual(True, sb.next_to(box1, box2))
+
+        box1.position = ds.Point3D(4, 0, 3)
+        box2.position = ds.Point3D(2, 0, 3)
+
+        self.assertEqual(True, sb.next_to(box1, box2))
+
+        box1.position = ds.Point3D(2, 0, 5)
+        box2.position = ds.Point3D(2, 0, 3)
+
+        self.assertEqual(True, sb.next_to(box1, box2))
+
+        box1.position = ds.Point3D(2, 0, 6)
+        box2.position = ds.Point3D(2, 0, 3)
+
+        self.assertEqual(False, sb.next_to(box1, box2))
+
+        box1.position = ds.Point3D(5, 0, 3)
+        box2.position = ds.Point3D(2, 0, 3)
+
+        self.assertEqual(False, sb.next_to(box1, box2))
+
+    def test_get_possible_config_opt(self):
+        sb = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        box_list1 = [ds.Box(2, 5, 3) for i in range(10)]
+        box_list2 = [ds.Box(4, 2, 1) for i in range(10)]
+        box_list3 = [ds.Box(1, 2, 2) for i in range(10)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
+        p_c = sb.get_possible_configurations_optimized(box_list1+box_list2+box_list3, [ds.Point3D(0, 0, 0), ds.Point3D(1, 1, 1)])
+        self.assertEqual(len(p_c), 6)
+
+    def test_on_same_level(self):
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        box1 = ds.Box(3, 5, 2)
+        box1.itemName = 'item1'
+        box1.position = ds.Point3D(0, 0, 0)
+        box2 = ds.Box(3, 5, 2)
+        box2.itemName = 'item1'
+        box2.position = ds.Point3D(0, 0, 2)
+        self.assertEqual(sb.on_same_level_placing(box2, [box1]), True)
+
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        box1 = ds.Box(3, 5, 2)
+        box1.itemName = 'item1'
+        box1.position = ds.Point3D(0, 0, 0)
+        box2 = ds.Box(3, 5, 2)
+        box2.itemName = 'item1'
+        box2.position = ds.Point3D(0, 5, 2)
+        self.assertEqual(sb.on_same_level_placing(box2, [box1]), True)
+
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        box1 = ds.Box(3, 5, 2)
+        box1.itemName = 'item1'
+        box1.position = ds.Point3D(0, 0, 0)
+        box2 = ds.Box(3, 5, 2)
+        box2.itemName = 'item2'
+        box2.position = ds.Point3D(0, 5, 2)
+        self.assertEqual(sb.on_same_level_placing(box2, [box1]), True)
+
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        box1 = ds.Box(3, 5, 2)
+        box1.itemName = 'item1'
+        box1.position = ds.Point3D(0, 0, 0)
+        box2 = ds.Box(3, 5, 2)
+        box2.itemName = 'item1'
+        box2.position = ds.Point3D(0, 0, 5)
+        self.assertEqual(sb.on_same_level_placing(box2, [box1]), False)
+
+    def test_branch_and_bound_opt(self):
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 5.0, 10.0))
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        sb.boxList = box_list1
+        res = sb.branch_and_bound_filling_optimized([], sb.boxList)
+        self.assertEqual(res, True)
+
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 7.0, 10.0))
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        sb.boxList = box_list1 + box_list2
+        res = sb.branch_and_bound_filling_optimized([], sb.boxList)
+        self.assertEqual(res, True)
+
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(2)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
+        sb.boxList = box_list1 + box_list2 + box_list3
+        res = sb.branch_and_bound_filling_optimized([], sb.boxList)
+        self.assertEqual(res, True)
+
+        # sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        # box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        # box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        # box_list3 = [ds.Box(2, 2, 4) for i in range(2)]
+        # for box in box_list1:
+        #     box.itemName = 'item1'
+        #     box.weight = 10
+        #     box.maximumWeight = 10
+        # for box in box_list2:
+        #     box.itemName = 'item2'
+        #     box.weight = 5
+        #     box.maximumWeight = 5
+        # for box in box_list3:
+        #     box.itemName = 'item3'
+        #     box.weight = 4
+        #     box.maximumWeight = 4
+        # sb.boxList = box_list1 + box_list2 + box_list3
+        # res = sb.branch_and_bound_filling([], sb.boxList)
+        # self.assertEqual(res, True)
+
+
+
+
+

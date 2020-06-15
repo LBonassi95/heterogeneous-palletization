@@ -495,30 +495,6 @@ class SingleBinProblem:
         return (box.get_end_x() <= self.bin.width and box.get_end_y() <= self.bin.height
                 and box.get_end_z() <= self.bin.depth)
 
-    def similarity_condition(self, to_place, p_b):
-        for box in p_b:
-            if box.position.y == to_place.position.y and box.itemName != to_place.itemName:
-                return False
-        return True
-
-    #PER COPIARE UNA LISTA DI SCATOLE MANTENENDO CORRETTAMENTE ANCHE QUELLE SOTTO
-    def copy_box_stack(self, p_b):
-        new_boxes = []
-        for box in p_b:
-            new_box = box.copy()
-            new_boxes.append(new_box)
-            for box_below in box.get_below_boxes():
-                box_b = self.get_equal_box(box_below, new_boxes)
-                new_box.belowBoxes.append(box_b)
-        return new_boxes
-
-
-    def get_equal_box(self, box, boxes):
-        for b in boxes:
-            if box == b:
-                return b
-        return None
-
     def fillBin(self):
         self.node_count = 0
         self.reset_problem()
@@ -542,7 +518,7 @@ class SingleBinProblem:
         self.node_count += 1
 
         # TODO euristica nell'ordinamento delle scatole
-        possible_configuration = [(p, box) for box in not_placed_boxes for p in points]
+        possible_configuration = self.get_possible_configurations(not_placed_boxes, points)
 
         if self.m_cut:
             if self.node_count > self.max_nodes:
@@ -567,6 +543,77 @@ class SingleBinProblem:
             box.position = NOT_PLACED_POINT
         self.update_best_filling(placed_boxes)
         return False
+
+    def get_possible_configurations(self, not_placed_boxes, points):
+        return [(p, box) for box in not_placed_boxes for p in points]
+
+    # Precondizione: box1 e box2 sono uguali e posizionate alla stessa altezza
+    def next_to(self, box1, box2):
+        return box1.get_end_z() == box2.get_pos_z() \
+               or box1.get_end_x() == box2.get_pos_x() \
+               or box2.get_end_z() == box1.get_pos_z() \
+               or box2.get_end_x() == box1.get_pos_x()
+
+    # non sarebbe meglio controllare i punti dove metto la scatola?
+    def on_same_level_placing(self, box1, placed_boxes):
+        on_same_level = [box for box in placed_boxes if box.get_pos_y() == box1.get_pos_y()
+                         and box.itemName == box1.itemName]
+        if on_same_level == []:
+            return True
+        for box in on_same_level:
+            if self.next_to(box1, box):
+                return True
+        return False
+
+    def get_possible_configurations_optimized(self, not_placed_boxes, points):
+        box_dict = {}
+        for box in not_placed_boxes:
+            if box.itemName not in box_dict:
+                box_dict[box.itemName] = box
+        possible_boxes = [box_dict[key] for key in box_dict.keys()]
+        possible_boxes = sorted(possible_boxes, key=lambda box: box.maximumWeight, reverse=True)
+        return [(p, box) for box in possible_boxes for p in points]
+
+
+    def branch_and_bound_filling_optimized(self, placed_boxes, not_placed_boxes):
+        if len(not_placed_boxes) == 0:
+            return True
+
+        points, VI = self.three_dimensional_corners(placed_boxes, not_placed_boxes)
+
+        if not self.check_backtrack_condition(placed_boxes, VI):
+            return False
+        self.node_count += 1
+
+        # TODO euristica nell'ordinamento delle scatole
+        possible_configuration = self.get_possible_configurations_optimized(not_placed_boxes, points)
+
+        if self.m_cut:
+            if self.node_count > self.max_nodes:
+                return False
+            if len(possible_configuration) > self.m:
+                possible_configuration = possible_configuration[:self.m]
+
+        for config in possible_configuration:
+            (p, box) = config
+            box.position = p
+
+            if self.pos_condition(box) \
+                    and self.check_full_weight_condition(box, box.get_weight(), placed_boxes)\
+                    and self.on_same_level_placing(box, placed_boxes):
+
+                new_placed_boxes = [b for b in placed_boxes] + [box]
+                new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
+                if self.m_cut and self.node_count > self.max_nodes:
+                    return False
+                elif self.branch_and_bound_filling_optimized(new_placed_boxes, new_not_placed_boxes):
+                    return True
+
+            # ripristino la scatola, in quanto ho fallito
+            box.position = NOT_PLACED_POINT
+        self.update_best_filling(placed_boxes)
+        return False
+
 
     # #VERSIONE ITERATIVA, DA AGGIUNGERE VINCOLI SULLA RICERCA
     # def branch_and_bound_filling_iter(self):
@@ -595,9 +642,35 @@ class SingleBinProblem:
     #                         stack.append((new_p_b, new_n_p_b))
     #     return False
 
+    # def similarity_condition(self, to_place, p_b):
+    #     for box in p_b:
+    #         if box.position.y == to_place.position.y and box.itemName != to_place.itemName:
+    #             return False
+    #     return True
+
+    # #PER COPIARE UNA LISTA DI SCATOLE MANTENENDO CORRETTAMENTE ANCHE QUELLE SOTTO
+    # def copy_box_stack(self, p_b):
+    #     new_boxes = []
+    #     for box in p_b:
+    #         new_box = box.copy()
+    #         new_boxes.append(new_box)
+    #         for box_below in box.get_below_boxes():
+    #             box_b = self.get_equal_box(box_below, new_boxes)
+    #             new_box.belowBoxes.append(box_b)
+    #     return new_boxes
+    #
+    #
+    # def get_equal_box(self, box, boxes):
+    #     for b in boxes:
+    #         if box == b:
+    #             return b
+    #     return None
+
+
+
 
 #Algoritmo per trovare la soluzione iniziale
-def H2(box_set, bin, m_cut=False, m=4, max_nodes=5000):
+def H2(box_set, bin, m_cut=True, m=4, max_nodes=5000):
     box_set = [box for box in box_set]
     box_set = sorted(box_set, key=lambda box: box.get_volume(), reverse=False)
     sb_list = []
