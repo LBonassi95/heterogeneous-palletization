@@ -614,27 +614,42 @@ class TestPalletizationModel(TestCase):
         print("--- %s seconds ---" % (time.time() - start_time))
         self.assertEqual(res, False)
 
-        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
-        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
-        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
-        box_list3 = [ds.Box(2, 2, 4) for i in range(3)]
-        for box in box_list1:
-            box.itemName = 'item1'
-            box.weight = 10
-            box.maximumWeight = 10
-        for box in box_list2:
-            box.itemName = 'item2'
-            box.weight = 5
-            box.maximumWeight = 5
-        for box in box_list3:
-            box.itemName = 'item3'
-            box.weight = 4
-            box.maximumWeight = 4
-        sb.boxList = box_list1 + box_list2 + box_list3
-        start_time = time.time()
-        res = sb.branch_and_bound_filling([], sb.boxList)
-        print("--- %s seconds ---" % (time.time() - start_time))
-        self.assertEqual(res, False)
+        # sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        # box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        # box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        # box_list3 = [ds.Box(2, 2, 4) for i in range(3)]
+        # for box in box_list1:
+        #     box.itemName = 'item1'
+        #     box.weight = 10
+        #     box.maximumWeight = 10
+        # for box in box_list2:
+        #     box.itemName = 'item2'
+        #     box.weight = 5
+        #     box.maximumWeight = 5
+        # for box in box_list3:
+        #     box.itemName = 'item3'
+        #     box.weight = 4
+        #     box.maximumWeight = 4
+        # sb.boxList = box_list1 + box_list2 + box_list3
+        # start_time = time.time()
+        # res = sb.branch_and_bound_filling([], sb.boxList)
+        # print("--- %s seconds ---" % (time.time() - start_time))
+        # self.assertEqual(res, False)
+
+    def test_overlapping_boxes(self):
+        box1 = ds.Box(3, 5, 2)
+        box2 = ds.Box(3, 5, 2)
+        box1.position = ds.Point3D(1, 5, 1)
+        box2.position = ds.Point3D(2, 0, 2)
+        below = getBoxesBelow(box1, placed_boxes=[box2])
+        self.assertEqual(2, box1.get_overlapping_area(below[0]))
+
+        box1 = ds.Box(3, 5, 2)
+        box2 = ds.Box(3, 5, 2)
+        box1.position = ds.Point3D(5, 5, 5)
+        box2.position = ds.Point3D(3, 0, 4)
+        below = getBoxesBelow(box1, placed_boxes=[box2])
+        self.assertEqual(1, box1.get_overlapping_area(below[0]))
 
 
 
