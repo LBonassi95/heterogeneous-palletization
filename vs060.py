@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 ## Cobotta robot demo for UNIBS class
-
 import sys
 import rospy
 from std_msgs.msg import Int32
@@ -12,6 +11,8 @@ import geometry_msgs.msg
 from math import pi
 import Data_Structures as ds
 
+# Per lanciare
+# roslaunch denso_robot_bringup vs060_bringup.launch
 
 class vs060Robot(object):
     def __init__(self):
@@ -54,6 +55,7 @@ class vs060Robot(object):
         print robot.get_current_state()
         print ""
 
+        self.origin = robot.get_current_state()
         # Misc variables
         self.box_name = ''
         self.robot = robot
@@ -66,32 +68,45 @@ class vs060Robot(object):
 
         ################ MOVE POSITIONS #####################
         self.home_joint_values = [0, 0, pi / 2, 0, pi / 2, 0]
+        #self.home_joint_values = self.origin.joint_state
+        #self.home_joint_values = [0.00015346623907763757, -1.407011836317686, -0.9765591968036391, 3.141215559515132, 0.7577111499402598, -3.1405790212738296]
         # [0,0,0,0,quello prima dell'end effector,0]
-        self.object_spawning_config = [0, 0, -pi / 2, 0, 0, 0]
 
         self.pick_pose = geometry_msgs.msg.Pose()
         self.pick_pose.orientation.y = 1.0  # (0, 1, 0, 0)
-        self.pick_pose.position.x = 0.2
-        self.pick_pose.position.y = -0.13
-        self.pick_pose.position.z = 0.05
+        self.pick_pose.position.x = 0.5
+        self.pick_pose.position.y = 0
+        self.pick_pose.position.z = 0.3
 
         self.approach_pick_pose = geometry_msgs.msg.Pose()
         self.approach_pick_pose.orientation.y = 1.0
-        self.approach_pick_pose.position.x = 0.2
-        self.approach_pick_pose.position.y = -0.13
-        self.approach_pick_pose.position.z = 0.15
+        self.approach_pick_pose.position.x = 0.5
+        self.approach_pick_pose.position.y = 0
+        self.approach_pick_pose.position.z = 0.4
 
         self.place_pose = geometry_msgs.msg.Pose()
         self.place_pose.orientation.y = 1.0
-        self.place_pose.position.x = 0.26
-        self.place_pose.position.y = 0.1
-        self.place_pose.position.z = 0.1
+        self.place_pose.position.x = -0.4
+        self.place_pose.position.y = 0.3
+        self.place_pose.position.z = 0.5
 
         self.approach_place_pose = geometry_msgs.msg.Pose()
         self.approach_place_pose.orientation.y = 1.0
-        self.approach_place_pose.position.x = 0.26
-        self.approach_place_pose.position.y = 0.1
-        self.approach_place_pose.position.z = 0.2
+        self.approach_place_pose.position.x = -0.4
+        self.approach_place_pose.position.y = 0.3
+        self.approach_place_pose.position.z = 0.6
+
+        self.origin_point = geometry_msgs.msg.Pose()
+        self.origin_point.orientation.y = 1.0  # (0, 1, 0, 0)
+        self.origin_point.position.x = -0.4
+        self.origin_point.position.y = -0.3
+        self.origin_point.position.z = 0
+
+        self.retry_point = geometry_msgs.msg.Pose()
+        self.retry_point.orientation.y = 1.0  # (0, 1, 0, 0)
+        self.retry_point.position.x = -0.1
+        self.retry_point.position.y = 0.4
+        self.retry_point.position.z = 0.4
 
         ################ MOVE POSITIONS #####################
 
@@ -125,6 +140,7 @@ class vs060Robot(object):
         scene = self.scene
         eef_link = self.eef_link
         scene.remove_attached_object(eef_link, name=box_name)
+        #scene.remove_world_object(box_name)
         return self.wait_for_state_update(box_is_known=True, box_is_attached=False, timeout=timeout)
 
     def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4):
@@ -176,7 +192,7 @@ class vs060Robot(object):
             self.group.set_joint_value_target(target_joint_values)
             plan = self.group.plan()
 
-        current_joints = self.group.get_current_joint_values()
+        #current_joints = self.group.get_current_joint_values()
         # print current_joints
         return plan
 
@@ -196,7 +212,7 @@ class vs060Robot(object):
         # Note: there is no equivalent function for clear_joint_value_targets()
         self.group.clear_pose_targets()
 
-        current_pose = self.group.get_current_pose().pose
+        #current_pose = self.group.get_current_pose().pose
         # print current_joints
 
         return plan
@@ -224,7 +240,7 @@ class vs060Robot(object):
         display_trajectory.trajectory_start = self.robot.get_current_state()
         display_trajectory.trajectory.append(plan)
         # Publish
-        self.display_trajectory_publisher.publish(display_trajectory);
+        self.display_trajectory_publisher.publish(display_trajectory)
 
     def execute_plan(self, plan):
 
@@ -237,24 +253,6 @@ class vs060Robot(object):
         ## first waypoint in the `RobotTrajectory`_ or ``execute()`` will fail
 
 
-def place_boxes(vs060):
-    single_bin = ds.SingleBinProblem(ds.Bin(10, 10, 10))
-    boxList = [ds.Box(1, 2, 3) for i in range(103)]
-    single_bin.boxList = boxList
-    res, boxList = single_bin.fillBin()
-    i = 0
-    for box in boxList:
-        rospy.sleep(0.01)
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = vs060.planning_frame
-        box_pose.pose.position.x = float(box.position.x) / 10 + 2
-        box_pose.pose.position.y = float(box.position.y) / 10 + 2
-        box_pose.pose.position.z = float(box.position.z) / 10 + 0
-        vs060.scene.add_box('castelnovo' + str(i), box_pose,
-                            size=(float(box.width) / 10, float(box.height) / 10, float(box.depth) / 10))
-        i += 1
-        print 'scatola piazzata' + str(i)
-
 
 if __name__ == '__main__':
 
@@ -263,71 +261,139 @@ if __name__ == '__main__':
         rospy.init_node('vs060_node', anonymous=True)
         vs060 = vs060Robot()
 
-        # ROBOT GOES HOME      
-        execution = True
-        plan = vs060.go_to_joint_state(vs060.home_joint_values, execution)
-        plan = vs060.go_to_joint_state(vs060.object_spawning_config, execution)
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = vs060.planning_frame
+        box_pose.pose.position.x = vs060.origin_point.position.x + 0.4
+        box_pose.pose.position.y = vs060.origin_point.position.y + 0.1
+        box_pose.pose.position.z = -0.50
+        vs060.scene.add_box('scatolinaxada', box_pose,
+                            size=(0.4, 0.1, 0.5))
+
+        rospy.sleep(1)
+
+        # ROBOT GOES HOME
+        plan = vs060.go_to_joint_state(vs060.pick_pose, execute=True)
+        plan = vs060.go_to_joint_state(vs060.retry_point, execute=True)
+        plan = vs060.go_to_joint_state(vs060.origin_point, execute=True)
+        #plan = vs060.go_to_joint_state(vs060.object_spawning_config, execute=True)
         #        cr.display_trajectory(plan)
 
-        rate = rospy.Rate(10)  # 10hz
+        #rate = rospy.Rate(10)  # 10hz
 
         rospy.sleep(0.01)
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = vs060.planning_frame
-        box_pose.pose.position.x = -0.4
-        box_pose.pose.position.y = 0
-        box_pose.pose.position.z = 0.1
-        vs060.scene.add_box('castelnovo', box_pose,
-                            size=(0.2, 0.2, 0.2))
-        #vs060.wait_for_state_update(box_is_known=True, timeout=4)
+        bin = ds.Bin(0.2, 0.1, 0.5)
+        box_list1 = []
+        #box_list1 = [ds.Box(0.06, 0.06, 0.06) for i in range(10)]
+        for box in box_list1:
+            box.itemName = "item1"
+        box_list2 = [ds.Box(0.06, 0.06, 0.08) for i in range(9)]
+        for box in box_list2:
+            box.itemName = "item2"
 
-        test_pose = geometry_msgs.msg.Pose()
-        test_pose.orientation.y = 1.0
-        test_pose.orientation.x = 0
-        test_pose.position.x = -0.4
-        test_pose.position.y = 0
-        test_pose.position.z = 0.2
+        box_list = box_list1 + box_list2
+        sb = ds.SingleBinProblem(bin)
+        sb.boxList = box_list
+        res = sb.fillBin()
 
-        test_pose2 = geometry_msgs.msg.Pose()
-        test_pose2.orientation.y = 1.0
-        test_pose2.orientation.x = 0
-        test_pose2.position.x = 0.4
-        test_pose2.position.y = 0.1
-        test_pose2.position.z = 0.2
 
-        test_pose3 = geometry_msgs.msg.Pose()
-        test_pose3.orientation.y = 1.0
-        test_pose3.orientation.x = 0
-        test_pose3.position.x = 0.4
-        test_pose3.position.y = -0.1
-        test_pose3.position.z = 0.2
+        # plan = vs060.go_to_pose_goal(vs060.origin_point, execute=False)
+        # if plan:
+        #     vs060.execute_plan(plan)
 
-        plan = vs060.go_to_joint_state(test_pose, execution)
+        eps = 0.005
+        index = 0
+        for (box, position) in sb.placement_best_solution:
 
-        vs060.attach_box('castelnovo')
+            box_pose = geometry_msgs.msg.PoseStamped()
+            box_pose.header.frame_id = vs060.planning_frame
+            box_pose.pose.position.x = 0.5
+            box_pose.pose.position.y = 0
+            box_pose.pose.position.z = box.get_height()/2
+            vs060.scene.add_box('scatolina'+str(index), box_pose,
+                                size=((box.get_width() - eps), (box.get_height() - eps),
+                                      (box.get_depth() - eps)))
 
-        plan = vs060.go_to_joint_state(test_pose2, execution)
+            vs060.wait_for_state_update(box_is_known=True, timeout=5)
+            vs060.approach_pick_pose.position.z = box.get_depth() + 0.1
+            plan = vs060.go_to_pose_goal(vs060.approach_pick_pose, execute=True)
 
-        vs060.detach_box('castelnovo')
+            vs060.pick_pose.position.z = box.get_depth()
+            plan = vs060.go_to_pose_goal(vs060.pick_pose, execute=True)
 
-        plan = vs060.go_to_joint_state(test_pose, execution)
+            #rospy.sleep(1)
 
-        rospy.sleep(0.01)
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = vs060.planning_frame
-        box_pose.pose.position.x = -0.4
-        box_pose.pose.position.y = 0
-        box_pose.pose.position.z = 0.1
-        vs060.scene.add_box('castelnovo2', box_pose,
-                            size=(0.2, 0.2, 0.2))
-        vs060.wait_for_state_update(box_is_known=True, timeout=4)
-        plan = vs060.go_to_joint_state(test_pose, execution)
+            vs060.attach_box('scatolina'+str(index))
+            delta = 0.5
+            vs060.approach_place_pose.position.x = position.get_x() + box.get_width()/2 + vs060.origin_point.position.x
+            vs060.approach_place_pose.position.y = position.get_y() + box.get_height()/2 + vs060.origin_point.position.y
+            vs060.approach_place_pose.position.z = position.get_z() + box.get_depth()
 
-        vs060.attach_box('castelnovo2')
+            plan = vs060.go_to_pose_goal(vs060.retry_point, execute=True)
+            if not plan:
+                print('non sono andato in retry')
+                vs060.detach_box('scatolina' + str(index))
+                vs060.scene.remove_world_object('scatolina'+str(index))
+                vs060.wait_for_state_update(box_is_known=True, timeout=2)
+            else:
+                plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execute=False)
+                if plan:
+                    vs060.execute_plan(plan)
+                    print('OK')
 
-        plan = vs060.go_to_joint_state(test_pose3, execution)
+            vs060.place_pose.position.x = position.get_x() + box.get_width()/2 + vs060.origin_point.position.x
+            vs060.place_pose.position.y = position.get_y() + box.get_height()/2 + vs060.origin_point.position.y
+            vs060.place_pose.position.z = position.get_z() + box.get_depth()
+            plan = vs060.go_to_pose_goal(vs060.place_pose, execute=False)
+            if plan:
+                vs060.execute_plan(plan)
+                vs060.detach_box('scatolina' + str(index))
+                vs060.wait_for_state_update(box_is_known=True, timeout=5)
 
-        vs060.detach_box('castelnovo2')
+            else:
+                # torno alla posizione iniziale
+                # metto giu il pezzo e lo prendo da un altro lato
+                # riprovo a fare il panning
+                print('aia')
+                vs060.detach_box('scatolina' + str(index))
+                vs060.wait_for_state_update(box_is_known=True, timeout=5)
+                vs060.scene.remove_world_object('scatolina'+str(index))
+                vs060.wait_for_state_update(box_is_known=True, timeout=5)
+
+            #rospy.sleep(1)
+            # vs060.detach_box('scatolina'+str(index))
+            # vs060.wait_for_state_update(box_is_known=True, timeout=5)
+
+            #rospy.sleep(0.5)
+            index = index + 1
+            #vs060.scene.remove_world_object('scatolina')
+            #vs060.wait_for_state_update(box_is_known=True, timeout=2)
+
+        #plan = vs060.go_to_joint_state(vs060.home_joint_values, execute=True)
+        #
+        # vs060.attach_box('castelnovo')
+        #
+        # plan = vs060.go_to_joint_state(test_pose2, execute=True)
+        #
+        # vs060.detach_box('castelnovo')
+        #
+        # plan = vs060.go_to_joint_state(test_pose, execute=True)
+        #
+        # rospy.sleep(0.01)
+        # box_pose = geometry_msgs.msg.PoseStamped()
+        # box_pose.header.frame_id = vs060.planning_frame
+        # box_pose.pose.position.x = -0.4
+        # box_pose.pose.position.y = 0
+        # box_pose.pose.position.z = 0.1
+        # vs060.scene.add_box('castelnovo2', box_pose,
+        #                     size=(0.2, 0.2, 0.2))
+        # vs060.wait_for_state_update(box_is_known=True, timeout=4)
+        # plan = vs060.go_to_joint_state(test_pose, execute=True)
+        #
+        # vs060.attach_box('castelnovo2')
+        #
+        # plan = vs060.go_to_joint_state(test_pose3, execute=True)
+        #
+        # vs060.detach_box('castelnovo2')
 
         # place_boxes(vs060)
 
@@ -358,3 +424,107 @@ if __name__ == '__main__':
 
     except rospy.ROSInterruptException:
         pass
+
+
+# if __name__ == '__main__':
+#
+#     try:
+#         moveit_commander.roscpp_initialize(sys.argv)
+#         rospy.init_node('vs060_node', anonymous=True)
+#         vs060 = vs060Robot()
+#
+#         # ROBOT GOES HOME
+#         execution = True
+#         plan = vs060.go_to_joint_state(vs060.home_joint_values, execution)
+#         plan = vs060.go_to_joint_state(vs060.object_spawning_config, execution)
+#         #        cr.display_trajectory(plan)
+#
+#         rate = rospy.Rate(10)  # 10hz
+#
+#         rospy.sleep(0.01)
+#         box_pose = geometry_msgs.msg.PoseStamped()
+#         box_pose.header.frame_id = vs060.planning_frame
+#         box_pose.pose.position.x = -0.4
+#         box_pose.pose.position.y = 0
+#         box_pose.pose.position.z = 0.1
+#         vs060.scene.add_box('castelnovo', box_pose,
+#                             size=(0.2, 0.2, 0.2))
+#         #vs060.wait_for_state_update(box_is_known=True, timeout=4)
+#
+#         test_pose = geometry_msgs.msg.Pose()
+#         test_pose.orientation.y = 1.0
+#         test_pose.orientation.x = 0
+#         test_pose.position.x = -0.4
+#         test_pose.position.y = 0
+#         test_pose.position.z = 0.2
+#
+#         test_pose2 = geometry_msgs.msg.Pose()
+#         test_pose2.orientation.y = 1.0
+#         test_pose2.orientation.x = 0
+#         test_pose2.position.x = 0.4
+#         test_pose2.position.y = 0.1
+#         test_pose2.position.z = 0.2
+#
+#         test_pose3 = geometry_msgs.msg.Pose()
+#         test_pose3.orientation.y = 1.0
+#         test_pose3.orientation.x = 0
+#         test_pose3.position.x = 0.4
+#         test_pose3.position.y = -0.1
+#         test_pose3.position.z = 0.2
+#
+#         plan = vs060.go_to_joint_state(test_pose, execution)
+#
+#         vs060.attach_box('castelnovo')
+#
+#         plan = vs060.go_to_joint_state(test_pose2, execution)
+#
+#         vs060.detach_box('castelnovo')
+#
+#         plan = vs060.go_to_joint_state(test_pose, execution)
+#
+#         rospy.sleep(0.01)
+#         box_pose = geometry_msgs.msg.PoseStamped()
+#         box_pose.header.frame_id = vs060.planning_frame
+#         box_pose.pose.position.x = -0.4
+#         box_pose.pose.position.y = 0
+#         box_pose.pose.position.z = 0.1
+#         vs060.scene.add_box('castelnovo2', box_pose,
+#                             size=(0.2, 0.2, 0.2))
+#         vs060.wait_for_state_update(box_is_known=True, timeout=4)
+#         plan = vs060.go_to_joint_state(test_pose, execution)
+#
+#         vs060.attach_box('castelnovo2')
+#
+#         plan = vs060.go_to_joint_state(test_pose3, execution)
+#
+#         vs060.detach_box('castelnovo2')
+#
+#         # place_boxes(vs060)
+#
+#     # #       PICK POSITION
+#     #         print "Moving Robot to pick position ..."
+#     #         plan = vs060.go_to_pose_goal(vs060.approach_pick_pose, execution)
+#     # #            cr.display_trajectory(plan)
+#     # #            rospy.sleep(1)
+#     #         plan = vs060.go_to_pose_goal(vs060.pick_pose, execution)
+#     #         rospy.sleep(1)
+#     #         plan = vs060.go_to_pose_goal(vs060.approach_pick_pose, execution)
+#     # #            rospy.sleep(1)
+#     #         print "Moving Robot to place position ..."
+#     #         plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execution)
+#     # #            cr.display_trajectory(plan)
+#     # #            rospy.sleep(1)
+#     #         plan = vs060.go_to_pose_goal(vs060.place_pose, execution)
+#     # #            cr.display_trajectory(plan)
+#     #         rospy.sleep(1)
+#     #         plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execution)
+#     # #            cr.display_trajectory(plan)
+#     # #            rospy.sleep(1)
+#     #         print "Task done, going back home ..."
+#     #             # ROBOT GOES HOME
+#     #         plan = vs060.go_to_joint_state(vs060.home_joint_values, execution)
+#     # #            cr.display_trajectory(plan)
+#     #         rate.sleep()
+#
+#     except rospy.ROSInterruptException:
+#         pass
