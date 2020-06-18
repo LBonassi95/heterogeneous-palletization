@@ -299,6 +299,7 @@ class SingleBinProblem:
         self.m_cut = False
         self.m = 4
         self.placement_best_solution2 = []# DA CANCELLARE IN FUTURO, SOLO PER TEST
+        self.optimal_solution = []
 
     def __copy__(self):
         copy = SingleBinProblem(self.bin)
@@ -507,6 +508,10 @@ class SingleBinProblem:
             self.placement_best_solution = [(box, box.position) for box in placed_boxes]
             self.placement_best_solution2 = placed_boxes
 
+    def set_best_filling(self, placed_boxes):
+        self.placement_best_solution = [(box, box.position) for box in placed_boxes]
+        self.optimal_solution = [(box, box.position) for box in placed_boxes]
+
     def pos_condition(self, box):
         return (box.get_end_x() <= self.bin.width and box.get_end_y() <= self.bin.height
                 and box.get_end_z() <= self.bin.depth)
@@ -593,6 +598,7 @@ class SingleBinProblem:
 
     def branch_and_bound_filling_optimized(self, placed_boxes, not_placed_boxes):
         if len(not_placed_boxes) == 0:
+            self.set_best_filling(placed_boxes)
             return True
 
         points, VI = self.three_dimensional_corners(placed_boxes, not_placed_boxes)
@@ -629,19 +635,6 @@ class SingleBinProblem:
             box.position = NOT_PLACED_POINT
         self.update_best_filling(placed_boxes)
         return False
-
-
-    def fillBin_optimized(self):
-        self.node_count = 0
-        self.reset_problem()
-        result = self.branch_and_bound_filling_optimized([], self.boxList)
-        if result == True:
-            self.update_best_filling(placed_boxes=self.boxList)
-            return []
-        placed_boxes = [box for (box, pos) in self.placement_best_solution]
-        not_placed_boxes = [box for box in self.boxList if box not in placed_boxes]
-        self.boxList = placed_boxes
-        return not_placed_boxes
 
 
     # #VERSIONE ITERATIVA, DA AGGIUNGERE VINCOLI SULLA RICERCA
