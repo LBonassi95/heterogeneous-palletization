@@ -357,13 +357,13 @@ class SingleBinProblem:
     def compute_area(self, points2D):
         if len(points2D) == 1 and points2D[0] == Point2D(0, 0):
             return self.bin.get_height() * self.bin.get_width()
-
-        area = points2D[0].get_x() * self.bin.get_height
-        for index in range(1, len(points2D)):
-            area = area + (points2D[index].get_x() - points2D[index - 1].get_x()) * points2D[index - 1].get_y()
-        area = area + (self.bin.get_width() - points2D[-1].get_x()) * points2D[-1].get_y()
-
-        return area
+        if len(points2D) > 0:
+            area = points2D[0].get_x() * self.bin.get_height
+            for index in range(1, len(points2D)):
+                area = area + (points2D[index].get_x() - points2D[index - 1].get_x()) * points2D[index - 1].get_y()
+            area = area + (self.bin.get_width() - points2D[-1].get_x()) * points2D[-1].get_y()
+            return area
+        return 0
 
     def three_dimensional_corners(self, box_set, J):
         if box_set is None or len(box_set) == 0:
@@ -412,15 +412,15 @@ class SingleBinProblem:
             volume = volume + box.get_volume()
 
         # start modifiche
-        volume2 = 0.0
-        if len(incremental_corners) > 0:
-            for index in range(1, len(incremental_corners)):
-                tmp = [Point2D(point3D.get_x(), point3D.get_y()) for point3D in incremental_corners[index - 1]]
-                if len(tmp) > 0:
-                    volume2 = volume2 + (self.compute_area(tmp) * (T[index] - T[index - 1]))
-            # end modifiche
-            volume2 = volume2 + (self.bin.get_depth() - T[-1]) * self.compute_area(
-                [Point2D(point3D.get_x(), point3D.get_y()) for point3D in incremental_corners[-1]])
+        # volume2 = 0.0
+        # if len(incremental_corners) > 0:
+        #     for index in range(1, len(incremental_corners)):
+        #         tmp = [Point2D(point3D.get_x(), point3D.get_y()) for point3D in incremental_corners[index - 1]]
+        #         if len(tmp) > 0:
+        #             volume2 = volume2 + (self.compute_area(tmp) * (T[index] - T[index - 1]))
+        #     # end modifiche
+        #     volume2 = volume2 + (self.bin.get_depth() - T[-1]) * self.compute_area(
+        #         [Point2D(point3D.get_x(), point3D.get_y()) for point3D in incremental_corners[-1]])
         # print(volume-volume2)
 
         # NOTA BENE CHE STO USANDO VOLUME2, DA ALCUNI PRIMI TEST SIMULATIVI NON SEMBRANO ESSERCI DIFFERENZE.
@@ -629,6 +629,19 @@ class SingleBinProblem:
             box.position = NOT_PLACED_POINT
         self.update_best_filling(placed_boxes)
         return False
+
+
+    def fillBin_optimized(self):
+        self.node_count = 0
+        self.reset_problem()
+        result = self.branch_and_bound_filling_optimized([], self.boxList)
+        if result == True:
+            self.update_best_filling(placed_boxes=self.boxList)
+            return []
+        placed_boxes = [box for (box, pos) in self.placement_best_solution]
+        not_placed_boxes = [box for box in self.boxList if box not in placed_boxes]
+        self.boxList = placed_boxes
+        return not_placed_boxes
 
 
     # #VERSIONE ITERATIVA, DA AGGIUNGERE VINCOLI SULLA RICERCA
