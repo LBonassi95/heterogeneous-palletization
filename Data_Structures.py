@@ -411,6 +411,22 @@ class SingleBinProblem:
         for box in box_set:
             volume = volume + box.get_volume()
 
+        # start modifiche
+        volume2 = 0.0
+        if len(incremental_corners) > 0:
+            for index in range(1, len(incremental_corners)):
+                tmp = [Point2D(point3D.get_x(), point3D.get_y()) for point3D in incremental_corners[index - 1]]
+                if len(tmp) > 0:
+                    volume2 = volume2 + (self.compute_area(tmp) * (T[index] - T[index - 1]))
+            # end modifiche
+            volume2 = volume2 + (self.bin.get_depth() - T[-1]) * self.compute_area(
+                [Point2D(point3D.get_x(), point3D.get_y()) for point3D in incremental_corners[-1]])
+        # print(volume-volume2)
+
+        # NOTA BENE CHE STO USANDO VOLUME2, DA ALCUNI PRIMI TEST SIMULATIVI NON SEMBRANO ESSERCI DIFFERENZE.
+        # SE NOTI PROBLEMI SWITCHA A VOLUME E BASTA
+        # return total_corners, volume
+
         return total_corners, volume
 
     def check_weight_condition(self, box, current_weight):

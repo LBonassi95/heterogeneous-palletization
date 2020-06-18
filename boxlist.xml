@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<BoxList>
+    <Box>
+        <Type>Box</Type>
+        <Width>2</Width>
+        <Height>3</Height>
+        <Depth>4</Depth>
+        <ItemName>Item1</ItemName>
+        <Quantity>10</Quantity>
+        <Weight>10</Weight>
+        <MaxWeight>50</MaxWeight>
+    </Box>
+    <Box>
+        <Type>Box</Type>
+        <Width>4</Width>
+        <Height>5</Height>
+        <Depth>6</Depth>
+        <ItemName>Item2</ItemName>
+        <Quantity>15</Quantity>
+        <Weight>15</Weight>
+        <MaxWeight>25</MaxWeight>
+    </Box>
+</BoxList>

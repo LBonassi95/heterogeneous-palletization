@@ -2,6 +2,7 @@
 from unittest import TestCase
 import Data_Structures as ds
 import random
+import time
 
 
 def getBoxesBelow(box, placed_boxes):
@@ -591,25 +592,49 @@ class TestPalletizationModel(TestCase):
         res = sb.branch_and_bound_filling_optimized([], sb.boxList)
         self.assertEqual(res, True)
 
-        # sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
-        # box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
-        # box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
-        # box_list3 = [ds.Box(2, 2, 4) for i in range(2)]
-        # for box in box_list1:
-        #     box.itemName = 'item1'
-        #     box.weight = 10
-        #     box.maximumWeight = 10
-        # for box in box_list2:
-        #     box.itemName = 'item2'
-        #     box.weight = 5
-        #     box.maximumWeight = 5
-        # for box in box_list3:
-        #     box.itemName = 'item3'
-        #     box.weight = 4
-        #     box.maximumWeight = 4
-        # sb.boxList = box_list1 + box_list2 + box_list3
-        # res = sb.branch_and_bound_filling([], sb.boxList)
-        # self.assertEqual(res, True)
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(3)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
+        sb.boxList = box_list1 + box_list2 + box_list3
+        start_time = time.time()
+        res = sb.branch_and_bound_filling_optimized([], sb.boxList)
+        print("--- %s seconds ---" % (time.time() - start_time))
+        self.assertEqual(res, False)
+
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(3)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
+        sb.boxList = box_list1 + box_list2 + box_list3
+        start_time = time.time()
+        res = sb.branch_and_bound_filling([], sb.boxList)
+        print("--- %s seconds ---" % (time.time() - start_time))
+        self.assertEqual(res, False)
 
 
 
