@@ -4,7 +4,7 @@ import random
 
 F_INITIAL_VALUE = -1
 
-DEBUG = False
+DEBUG = True
 DEFAULT_MAX_WEIGHT = 1e10
 DEFAULT_WEIGHT = 1
 DEFAULT_ITEM_NAME = "box"
@@ -490,14 +490,30 @@ class SingleBinProblem:
 
     def check_full_weight_condition(self, box, current_weight, placed_boxes):
         below_boxes = self.getBoxesBelow(box, placed_boxes)
-        if box.position.y != 0 and len(below_boxes) == 0:
-            return False
         if len(below_boxes) > 0:
             for below_box in below_boxes:
                 if below_box.get_maximumWeight() < current_weight:
                     return False
                 if not self.check_full_weight_condition(below_box, current_weight + below_box.get_weight(), placed_boxes):
                     return False
+        return True
+
+    def below_boxes_constraints(self, box, placed_boxes):
+        below_boxes = self.getBoxesBelow(box, placed_boxes)
+        if box.position.y != 0:
+            if len(below_boxes) == 0:
+                return False
+            area = 0
+            for box2 in below_boxes:
+                area += box.get_overlapping_area(box2)
+            tot_area = box.width * box.depth
+            perc_area = area/tot_area
+            if perc_area > 0.5:
+                return True
+            else:
+                if DEBUG:
+                    print "violato un vincolo sull'area"
+                return False
         return True
 
     def add_boxes(self, to_add):
@@ -628,6 +644,7 @@ class SingleBinProblem:
 
             if self.pos_condition(box) \
                     and self.check_full_weight_condition(box, box.get_weight(), placed_boxes)\
+                    and self.below_boxes_constraints(box, placed_boxes)\
                     and self.on_same_level_placing(box, placed_boxes):
 
                 new_placed_boxes = [b for b in placed_boxes] + [box]
