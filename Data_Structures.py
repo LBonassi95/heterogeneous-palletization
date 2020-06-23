@@ -4,7 +4,7 @@ import random
 
 F_INITIAL_VALUE = -1
 
-DEBUG = True
+DEBUG = False
 DEFAULT_MAX_WEIGHT = 1e10
 DEFAULT_WEIGHT = 1
 DEFAULT_ITEM_NAME = "box"
@@ -20,6 +20,7 @@ class Box:
         self.position = NOT_PLACED_POINT
         self.maximumWeight = DEFAULT_MAX_WEIGHT
         self.itemName = DEFAULT_ITEM_NAME
+        self.id = -1
 
     def copy(self):
         new_box = Box(self.width, self.height, self.depth)
@@ -27,6 +28,7 @@ class Box:
         new_box.position = Point3D(self.position.x, self.position.y, self.position.z)
         new_box.maximumWeight = self.maximumWeight
         new_box.itemName = self.itemName
+        new_box.id = self.id
         return new_box
 
     def get_maximumWeight(self):
@@ -266,9 +268,9 @@ class PalletizationModel:
         return l1_val + max(0, value)
 
     #ALGORITMO PER CERCARE DI CHIUDERE IL BIN i-ESIMO, VEDI Main Branching Tree sull'articolo
-    def try_to_close(self, i):
+    def try_to_close(self, i, optimized = False):
         if DEBUG:
-            print "sto provando achiudere una scatola"
+            print "sto provando a chiudere una scatola"
         sp = self.M[i]
         try_to_place_list = []
         for j in self.boxList:
@@ -279,7 +281,7 @@ class PalletizationModel:
             sp.open = False
         else:
             if not self.get_l2_bound(try_to_place_list) >= 2:
-                sb_list = H2(sp.boxList + try_to_place_list, self.bin)
+                sb_list = H2(sp.boxList + try_to_place_list, self.bin, optimized=optimized)
                 if len(sb_list) == 1:
                     sb_list[0].open = False
                     self.M[i] = sb_list[0]
@@ -303,7 +305,7 @@ class SingleBinProblem:
         self.max_nodes = 5000
         self.m_cut = False
         self.m = 4
-        self.optimal_solution = []
+        self.not_placed_boxes = []
 
     def __copy__(self):
         copy = SingleBinProblem(self.bin)
@@ -448,6 +450,7 @@ class SingleBinProblem:
     def reset_problem(self):
         for b in self.boxList:
             b.position = NOT_PLACED_POINT
+        self.placement_best_solution = []
 
     def update_best_filling_value(self, new_F):
         if self.F < new_F:
@@ -528,6 +531,7 @@ class SingleBinProblem:
         if self.F < new_F:
             self.F = new_F
             self.placement_best_solution = [box.copy() for box in placed_boxes]
+            self.not_placed_boxes = [box for box in self.boxList if box not in placed_boxes]
 
     def pos_condition(self, box):
         return (box.get_end_x() <= self.bin.width and box.get_end_y() <= self.bin.height
@@ -543,8 +547,9 @@ class SingleBinProblem:
         if result == True:
             return []
         placed_boxes = [box for box in self.placement_best_solution]
-        not_placed_boxes = [box for box in self.boxList if box not in placed_boxes]
+        not_placed_boxes = self.not_placed_boxes
         self.boxList = placed_boxes
+        self.not_placed_boxes = []
         return not_placed_boxes
 
 
@@ -607,6 +612,7 @@ class SingleBinProblem:
                 return True
         return False
 
+
     def get_possible_configurations_optimized(self, not_placed_boxes, points):
         box_dict = {}
         for box in not_placed_boxes:
@@ -615,6 +621,7 @@ class SingleBinProblem:
         possible_boxes = [box_dict[key] for key in box_dict.keys()]
         possible_boxes = sorted(possible_boxes, key=lambda box: box.maximumWeight, reverse=True)
         return [(p, box) for box in possible_boxes for p in points]
+
 
 
     def branch_and_bound_filling_optimized(self, placed_boxes, not_placed_boxes):
@@ -659,8 +666,10 @@ class SingleBinProblem:
         self.update_best_filling(placed_boxes)
         return False
 
+
+
 #Algoritmo per trovare la soluzione iniziale
-def H2(box_set, bin, m_cut=True, m=4, max_nodes=5000):
+def H2(box_set, bin, m_cut=True, m=4, max_nodes=5000, optimized=False):
     box_set = [box for box in box_set]
     box_set = sorted(box_set, key=lambda box: box.get_volume(), reverse=False)
     sb_list = []
@@ -670,10 +679,11 @@ def H2(box_set, bin, m_cut=True, m=4, max_nodes=5000):
         sb.max_nodes = max_nodes
         sb.m_cut = m_cut
         sb.m = m
-        not_placed_boxes = sb.fillBin()
+        not_placed_boxes = sb.fillBin(optimized=optimized)
         box_set = not_placed_boxes
         sb_list.append(sb)
     return sb_list
+
 
 
 class Search:
@@ -681,10 +691,13 @@ class Search:
     def __init__(self, first_problem):
         self.first_problem = first_problem
         self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
-        self.Z = len(H2(first_problem.boxList, first_problem.bin))
+        self.Z = len(H2(first_problem.boxList, first_problem.bin, optimized=True))
 
     def search(self):
         return self.backtracking_search(self.first_problem)
+
+    def search_opt(self):
+        return self.backtracking_search_optimized(self.first_problem)
 
     #Main Branching Tree dell'articolo
     def backtracking_search(self, current_problem):
@@ -717,28 +730,27 @@ class Search:
                 return result
         return "fail"
 
-    def assign_box_to_new_bin(self, box, current_problem, not_placed_boxes):
-        # da ottimizzare per il caso in cui non ci stia (calcolare l2)vs
+    def assign_box_to_new_bin(self, box, current_problem, not_placed_boxes, optimized=False):
         new_sbp = SingleBinProblem(current_problem.bin)
         new_sbp.add_boxes(box)
-        new_sbp.fillBin()
+        new_sbp.fillBin(optimized=optimized)
         new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
         new_bins = [sbp.__copy__() for sbp in current_problem.M]
         new_p = PalletizationModel(current_problem.bin, new_not_placed_boxes, new_bins + [new_sbp])
-        new_p.try_to_close(len(new_p.M) - 1)
+        new_p.try_to_close(len(new_p.M) - 1, optimized=optimized)
         return new_p
 
-    def assign_box_to_bin(self, box, current_problem, i, not_placed_boxes):
+    def assign_box_to_bin(self, box, current_problem, i, not_placed_boxes, optimized=False):
         new_p = current_problem.__copy__()
         new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
         new_p.boxList = new_not_placed_boxes
         new_sbp = new_p.M[i]
         new_sbp.add_boxes(box)
-        h2_result = H2(new_p.boxList, new_p.bin)
+        h2_result = H2(new_p.boxList, new_p.bin, optimized=optimized)
         if len(h2_result) == 1:
             new_p.M[i] = h2_result[0]
             return new_p, []
-        single_bin_result = new_sbp.fillBin()
+        single_bin_result = new_sbp.fillBin(optimized=optimized)
         return new_p, single_bin_result
 
     def backtracking_condition(self, current_problem, i, box):
@@ -747,3 +759,26 @@ class Search:
             if not l2 >= 2:
                 return True
         return False
+
+    #Main Branching Tree dell'articolo
+    def backtracking_search_optimized(self, current_problem):
+        not_placed_boxes = current_problem.boxList
+        if current_problem.get_l2_bound(current_problem.boxList) + current_problem.get_closed_bins() >= self.Z:
+            return "fail"
+        if not_placed_boxes == []:
+            return current_problem
+        box = not_placed_boxes[0]
+        for i in range(len(current_problem.M)):
+            if self.backtracking_condition(current_problem, i, box):
+                new_p, single_bin_result = self.assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
+                if single_bin_result == []:
+                    new_p.try_to_close(i, optimized=True)
+                    result = self.backtracking_search_optimized(new_p)
+                    if result != "fail":
+                        return result
+        if len(current_problem.M) < self.Z - 1:
+            new_p = self.assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=True)
+            result = self.backtracking_search_optimized(new_p)
+            if result != "fail":
+                return result
+        return "fail"
