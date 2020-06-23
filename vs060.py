@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-## Cobotta robot demo for UNIBS class
+
 import sys
 import rospy
 from std_msgs.msg import Int32
@@ -12,7 +12,7 @@ from math import pi
 import Data_Structures as ds
 
 # Per lanciare
-# roslaunch denso_robot_bringup vs060_bringup.launch
+    # roslaunch denso_robot_bringup vs060_bringup.launch
 
 class vs060Robot(object):
     def __init__(self):
@@ -105,9 +105,10 @@ class vs060Robot(object):
         self.retry_point = geometry_msgs.msg.Pose()
         self.retry_point.orientation.y = 1.0  # (0, 1, 0, 0)
         self.retry_point.position.x = -0.1
-        self.retry_point.position.y = 0.4
+        self.retry_point.position.y = -0.2
         self.retry_point.position.z = 0.4
 
+        self.box_counter = 0
         ################ MOVE POSITIONS #####################
 
     def attach_box(self, box_name, timeout=4):
@@ -253,6 +254,81 @@ class vs060Robot(object):
         ## first waypoint in the `RobotTrajectory`_ or ``execute()`` will fail
 
 
+def place_boxes_planning(vs060, boxList, offset_x):
+    # i = 0
+    # for box in boxList:
+    #     vs060.detach_box(str(i))
+    #     i += 1
+    scale_factor = 1
+    eps = 0.005
+    #offset_x = 0
+
+    #boxList = sorted(boxList, key=lambda box: box.position.get_y(), reverse=False)  # check if it works properly
+    #boxList = sorted(boxList, key=lambda box: box.get_end_y(), reverse=False)  # check if it works properly
+
+
+    for box in boxList:
+
+
+        vs060.approach_place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.origin_point.position.x
+        vs060.approach_place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.origin_point.position.y
+        vs060.approach_place_pose.position.z = box.position.get_y() + box.get_height() + 0.1
+
+        plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execute=True)
+        if plan:
+            print('[OK] approach pose')
+
+        vs060.place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.origin_point.position.x
+        vs060.place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.origin_point.position.y
+        vs060.place_pose.position.z = box.position.get_y() + box.get_height()
+        plan = vs060.go_to_pose_goal(vs060.place_pose, execute=True)
+        if plan:
+            print('[ok] pose ')
+            #vs060.detach_box('scatolina' + str(index))
+            #vs060.wait_for_state_update(box_is_known=True, timeout=5)
+
+
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = vs060.planning_frame
+        box_pose.pose.position.x = ((float(box.position.x) + (float(box.width) / 2)) / scale_factor) + vs060.origin_point.position.x
+        box_pose.pose.position.y = ((float(box.position.z) + (float(box.depth) / 2)) / scale_factor) + vs060.origin_point.position.y
+        box_pose.pose.position.z = ((float(box.position.y) + (float(box.height) / 2)) / scale_factor)
+
+        vs060.scene.add_box(str(vs060.box_counter), box_pose,
+                            size=((float(box.width) - eps) / scale_factor, (float(box.depth) - eps) / scale_factor,
+                                  (float(box.height) - eps) / scale_factor))
+        vs060.wait_for_state_update(box_is_known=True, timeout=5)
+
+        plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execute=True)
+        if plan:
+            print('[OK] approach pose')
+
+        vs060.box_counter += 1
+        print 'scatola piazzata' + str(vs060.box_counter)
+
+
+def place_boxes(vs060, boxList, offset_x):
+    # i = 0
+    # for box in boxList:
+    #     vs060.detach_box(str(i))
+    #     i += 1
+    scale_factor = 1
+    eps = 0.0005
+    # offset_x = 0
+
+    for box in boxList:
+        rospy.sleep(0.01)
+
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = vs060.planning_frame
+        box_pose.pose.position.x = ((float(box.position.x) + (float(box.width) / 2)) / scale_factor) + vs060.origin_point.position.x - 0.5
+        box_pose.pose.position.z = ((float(box.position.y) + (float(box.height) / 2)) / scale_factor)
+        box_pose.pose.position.y = ((float(box.position.z) + (float(box.depth) / 2)) / scale_factor) + vs060.origin_point.position.y - 0.5
+        vs060.scene.add_box(str(vs060.box_counter), box_pose,
+                            size=((float(box.width) - eps) / scale_factor, (float(box.depth) - eps) / scale_factor,
+                                  (float(box.height) - eps) / scale_factor))
+        vs060.box_counter += 1
+        print 'scatola piazzata' + str(vs060.box_counter)
 
 if __name__ == '__main__':
 
@@ -261,16 +337,6 @@ if __name__ == '__main__':
         rospy.init_node('vs060_node', anonymous=True)
         vs060 = vs060Robot()
 
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = vs060.planning_frame
-        box_pose.pose.position.x = vs060.origin_point.position.x + 0.4
-        box_pose.pose.position.y = vs060.origin_point.position.y + 0.1
-        box_pose.pose.position.z = -0.50
-        vs060.scene.add_box('scatolinaxada', box_pose,
-                            size=(0.4, 0.1, 0.5))
-
-        rospy.sleep(1)
-
         # ROBOT GOES HOME
         plan = vs060.go_to_joint_state(vs060.pick_pose, execute=True)
         plan = vs060.go_to_joint_state(vs060.retry_point, execute=True)
@@ -278,31 +344,36 @@ if __name__ == '__main__':
         #plan = vs060.go_to_joint_state(vs060.object_spawning_config, execute=True)
         #        cr.display_trajectory(plan)
 
-        #rate = rospy.Rate(10)  # 10hz
 
-        rospy.sleep(0.01)
-        bin = ds.Bin(0.2, 0.1, 0.5)
-        box_list1 = []
-        #box_list1 = [ds.Box(0.06, 0.06, 0.06) for i in range(10)]
+        bin = ds.Bin(0.25, 0.20, 0.2)
+        box_list1 = [ds.Box(0.02, 0.03, 0.04) for i in range(50)]
         for box in box_list1:
             box.itemName = "item1"
-        box_list2 = [ds.Box(0.06, 0.06, 0.08) for i in range(9)]
+        box_list2 = [ds.Box(0.04, 0.05, 0.02) for i in range(20)]
         for box in box_list2:
             box.itemName = "item2"
-
-        box_list = box_list1 + box_list2
+        box_list3 = [ds.Box(0.06, 0.02, 0.03) for i in range(20)]
+        for box in box_list3:
+            box.itemName = "item3"
+        box_list = box_list2 + box_list3 + box_list1
         sb = ds.SingleBinProblem(bin)
         sb.boxList = box_list
-        res = sb.fillBin()
+
+        res = sb.fillBin(optimized=True)
+        boxes = []
+        place_boxes(vs060, sb.placement_best_solution, 2)
+
+        boxList = sorted(sb.placement_best_solution, key=lambda box: box.position.get_y(), reverse=False)  # check if it works properly
+        boxList = sorted(boxList, key=lambda box: box.get_end_y(), reverse=False)  # check if it works properly
+        # pick and place "velocizzato"
+        #place_boxes_planning(vs060, sb.placement_best_solution, 2)
+        #print('Finito il placing "velocizzato delle scatoleeee!!!')
 
 
-        # plan = vs060.go_to_pose_goal(vs060.origin_point, execute=False)
-        # if plan:
-        #     vs060.execute_plan(plan)
 
         eps = 0.005
         index = 0
-        for (box, position) in sb.placement_best_solution:
+        for box in boxList:
 
             box_pose = geometry_msgs.msg.PoseStamped()
             box_pose.header.frame_id = vs060.planning_frame
@@ -310,42 +381,46 @@ if __name__ == '__main__':
             box_pose.pose.position.y = 0
             box_pose.pose.position.z = box.get_height()/2
             vs060.scene.add_box('scatolina'+str(index), box_pose,
-                                size=((box.get_width() - eps), (box.get_height() - eps),
-                                      (box.get_depth() - eps)))
+                                size=((box.get_width() - eps), (box.get_depth() - eps),
+                                      (box.get_height() - eps)))
 
             vs060.wait_for_state_update(box_is_known=True, timeout=5)
-            vs060.approach_pick_pose.position.z = box.get_depth() + 0.1
+
+            vs060.approach_pick_pose.position.z = box.get_height() + 0.1
             plan = vs060.go_to_pose_goal(vs060.approach_pick_pose, execute=True)
+            if plan:
+                print('[OK] approach pre-pick')
 
-            vs060.pick_pose.position.z = box.get_depth()
+            vs060.pick_pose.position.z = box.get_height()
             plan = vs060.go_to_pose_goal(vs060.pick_pose, execute=True)
+            if plan:
+                print('[OK] pick')
 
-            #rospy.sleep(1)
+            vs060.attach_box('scatolina' + str(index))
 
-            vs060.attach_box('scatolina'+str(index))
-            delta = 0.5
-            vs060.approach_place_pose.position.x = position.get_x() + box.get_width()/2 + vs060.origin_point.position.x
-            vs060.approach_place_pose.position.y = position.get_y() + box.get_height()/2 + vs060.origin_point.position.y
-            vs060.approach_place_pose.position.z = position.get_z() + box.get_depth()
+            plan = vs060.go_to_pose_goal(vs060.approach_pick_pose, execute=True)
+            if plan:
+                print('[OK] approach after-pick ')
 
             plan = vs060.go_to_pose_goal(vs060.retry_point, execute=True)
-            if not plan:
-                print('non sono andato in retry')
-                vs060.detach_box('scatolina' + str(index))
-                vs060.scene.remove_world_object('scatolina'+str(index))
-                vs060.wait_for_state_update(box_is_known=True, timeout=2)
-            else:
-                plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execute=False)
-                if plan:
-                    vs060.execute_plan(plan)
-                    print('OK')
-
-            vs060.place_pose.position.x = position.get_x() + box.get_width()/2 + vs060.origin_point.position.x
-            vs060.place_pose.position.y = position.get_y() + box.get_height()/2 + vs060.origin_point.position.y
-            vs060.place_pose.position.z = position.get_z() + box.get_depth()
-            plan = vs060.go_to_pose_goal(vs060.place_pose, execute=False)
             if plan:
-                vs060.execute_plan(plan)
+                print('[OK] retry point')
+
+
+            vs060.approach_place_pose.position.x = box.position.get_x() + box.get_width()/2 + vs060.origin_point.position.x
+            vs060.approach_place_pose.position.y = box.position.get_z() + box.get_depth()/2 + vs060.origin_point.position.y
+            vs060.approach_place_pose.position.z = box.position.get_y() + box.get_height() + 0.1
+
+            plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execute=True)
+            if plan:
+                print('[OK] approach pose')
+
+            vs060.place_pose.position.x = box.position.get_x() + box.get_width()/2 + vs060.origin_point.position.x
+            vs060.place_pose.position.y = box.position.get_z() + box.get_depth()/2 + vs060.origin_point.position.y
+            vs060.place_pose.position.z = box.position.get_y() + box.get_height()
+            plan = vs060.go_to_pose_goal(vs060.place_pose, execute=True)
+            if plan:
+                print('[ok] pose ')
                 vs060.detach_box('scatolina' + str(index))
                 vs060.wait_for_state_update(box_is_known=True, timeout=5)
 
@@ -359,6 +434,15 @@ if __name__ == '__main__':
                 vs060.scene.remove_world_object('scatolina'+str(index))
                 vs060.wait_for_state_update(box_is_known=True, timeout=5)
 
+            plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execute=True)
+            if plan:
+                print('[OK] approach after-pose')
+
+            plan = vs060.go_to_pose_goal(vs060.retry_point, execute=True)
+            if plan:
+                print('[OK] retry point after pose')
+
+            print('==================================================\n')
             #rospy.sleep(1)
             # vs060.detach_box('scatolina'+str(index))
             # vs060.wait_for_state_update(box_is_known=True, timeout=5)
