@@ -226,7 +226,7 @@ class vs060Robot(object):
         display_trajectory.trajectory_start = self.robot.get_current_state()
         display_trajectory.trajectory.append(plan)
         # Publish
-        self.display_trajectory_publisher.publish(display_trajectory);
+        self.display_trajectory_publisher.publish(display_trajectory)
 
     def execute_plan(self, plan):
 
@@ -244,8 +244,9 @@ def place_boxes(vs060, boxList, offset_x):
     # for box in boxList:
     #     vs060.detach_box(str(i))
     #     i += 1
-    scale_factor = 20
-    eps = 0.1
+    scale_factor = 100
+    eps = 0.005
+    #offset_x = 0
 
     for box in boxList:
         rospy.sleep(0.01)
@@ -268,28 +269,38 @@ if __name__ == '__main__':
         vs060 = vs060Robot()
 
         #CONFIGURAZIONE CON BUG
-        bin = ds.Bin(10, 50, 10)
-        box_list = test_palletizationModel.get_random_box_list_with_weight(10)
-        sb = ds.SingleBinProblem(bin)
-        sb.boxList = box_list
-        res = sb.branch_and_bound_filling_iter()
-        place_boxes(vs060, sb.placement_best_solution2, 1)
-
-        # bin = ds.Bin(30, 50, 20)
-        # box_list1 = [ds.Box(2, 3, 4) for i in range(15)]
-        # for box in box_list1:
-        #     box.itemName = "item1"
-        # box_list2 = [ds.Box(4, 5, 2) for i in range(15)]
-        # for box in box_list2:
-        #     box.itemName = "item2"
-        # box_list3 = [ds.Box(6, 2, 3) for i in range(15)]
-        # for box in box_list3:
-        #     box.itemName = "item3"
-        # box_list = box_list1 + box_list2 + box_list3
+        # bin = ds.Bin(10, 50, 10)
+        # box_list = test_palletizationModel.get_random_box_list_with_weight(10)
         # sb = ds.SingleBinProblem(bin)
         # sb.boxList = box_list
-        # res = sb.branch_and_bound_filling_iter()
-        # place_boxes(vs060, sb.placement_best_solution2, 0.1)
+        # #res = sb.branch_and_bound_filling_iter()
+        # res = sb.fillBin()
+        #
+        # boxes = []
+        # for (box, position) in sb.placement_best_solution:
+        #     box.position = position
+        #     boxes.append(box)
+        #
+        #
+        # place_boxes(vs060, boxes, 1)
+
+        bin = ds.Bin(25, 20, 20)
+        box_list1 = [ds.Box(2, 3, 4) for i in range(50)]
+        for box in box_list1:
+            box.itemName = "item1"
+        box_list2 = [ds.Box(4, 5, 2) for i in range(20)]
+        for box in box_list2:
+            box.itemName = "item2"
+        box_list3 = [ds.Box(6, 2, 3) for i in range(25)]
+        for box in box_list3:
+            box.itemName = "item3"
+        box_list = box_list1 + box_list2 + box_list3
+        sb = ds.SingleBinProblem(bin)
+        sb.boxList = box_list
+
+        res = sb.fillBin(optimized=True)
+        boxes = []
+        place_boxes(vs060, sb.placement_best_solution, 2)
 
 
     except rospy.ROSInterruptException:

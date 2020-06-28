@@ -2,21 +2,40 @@
 <BoxList>
     <Box>
         <Type>Box</Type>
-        <Width>2</Width>
-        <Height>3</Height>
-        <Depth>4</Depth>
+        <Width>0.02</Width>
+        <Height>0.03</Height>
+        <Depth>0.04</Depth>
         <ItemName>Item1</ItemName>
-        <Quantity>10</Quantity>
-        <Weight>10</Weight>
-        <MaxWeight>50</MaxWeight>
+        <Quantity>50</Quantity>
+        <Weight>1</Weight>
+        <MaxWeight>10000</MaxWeight>
     </Box>
     <Box>
         <Type>Box</Type>
-        <Width>4</Width>
-        <Height>5</Height>
-        <Depth>6</Depth>
+        <Width>0.04</Width>
+        <Height>0.05</Height>
+        <Depth>0.02</Depth>
         <ItemName>Item2</ItemName>
-        <Quantity>15</Quantity>
+        <Quantity>20</Quantity>
+        <Weight>1</Weight>
+        <MaxWeight>10000</MaxWeight>
+    </Box>
+    <Box>
+        <Type>Box</Type>
+        <Width>0.06</Width>
+        <Height>0.02</Height>
+        <Depth>0.03</Depth>
+        <ItemName>Item2</ItemName>
+        <Quantity>20</Quantity>
+        <Weight>1</Weight>
+        <MaxWeight>10000</MaxWeight>
+    </Box>
+    <Box>
+        <Type>Cylinder</Type>
+        <Radius>4</Radius>
+        <Height>5</Height>
+        <ItemName>Item3</ItemName>
+        <Quantity>0</Quantity>
         <Weight>15</Weight>
         <MaxWeight>25</MaxWeight>
     </Box>
