@@ -295,6 +295,7 @@ class PalletizationModel:
 class SingleBinProblem:
 
     def __init__(self, bin):
+        self.max_weight = 1e10
         self.bin = bin
         self.boxList = []
         self.open = True
@@ -650,6 +651,7 @@ class SingleBinProblem:
             box.position = p
 
             if self.pos_condition(box) \
+                    and self.check_pallet_weight(placed_boxes+[box])\
                     and self.check_full_weight_condition(box, box.get_weight(), placed_boxes)\
                     and self.below_boxes_constraints(box, placed_boxes)\
                     and self.on_same_level_placing(box, placed_boxes):
@@ -665,6 +667,10 @@ class SingleBinProblem:
             box.position = NOT_PLACED_POINT
         self.update_best_filling(placed_boxes)
         return False
+
+    def check_pallet_weight(self, boxes):
+        weight_pallet = sum([b.weight for b in boxes])
+        return weight_pallet <= self.max_weight
 
 
 

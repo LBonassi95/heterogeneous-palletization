@@ -10,7 +10,19 @@ class IDSearch:
         self.first_problem = first_problem
         self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
         self.max_depth = self.first_problem.get_l2_bound(self.first_problem.boxList)
-        #self.max_depth = 1
+        self.item_dict = {}
+
+    def check_item_count(self, sb_list):
+        if len(self.item_dict.keys()) == 0:
+            return True
+        for sb in sb_list:
+            box_list = sb.placement_best_solution
+            for key in self.item_dict.keys():
+                items = len([b for b in box_list if b.itemName == key])
+                if items < self.item_dict[key]:
+                    return False
+        return True
+
 
     def search_id(self):
         res = self.backtracking_search_optimized_id(self.first_problem)
@@ -54,22 +66,26 @@ class IDSearch:
     def backtracking_search_optimized_id(self, current_problem):
         not_placed_boxes = current_problem.boxList
         if not_placed_boxes == []:
-            return current_problem
-        box = not_placed_boxes[0]
-        for i in range(len(current_problem.M)):
-            if self.backtracking_condition(current_problem, i, box):
-                new_p, single_bin_result = self.assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
-                if single_bin_result == []:
-                    new_p.try_to_close(i, optimized=True)
-                    result = self.backtracking_search_optimized_id(new_p)
-                    if result != "fail":
-                        return result
-        if len(current_problem.M) < self.max_depth:
-            new_p = self.assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=True)
-            result = self.backtracking_search_optimized_id(new_p)
-            if result != "fail":
-                return result
-        return "fail"
+            if self.check_item_count(current_problem.M):
+                return current_problem
+            else:
+                return "fail"
+        else:
+            box = not_placed_boxes[0]
+            for i in range(len(current_problem.M)):
+                if self.backtracking_condition(current_problem, i, box):
+                    new_p, single_bin_result = self.assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
+                    if single_bin_result == []:
+                        new_p.try_to_close(i, optimized=True)
+                        result = self.backtracking_search_optimized_id(new_p)
+                        if result != "fail":
+                            return result
+            if len(current_problem.M) < self.max_depth:
+                new_p = self.assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=True)
+                result = self.backtracking_search_optimized_id(new_p)
+                if result != "fail":
+                    return result
+            return "fail"
 
 
 class SearchAnyTime:
@@ -79,6 +95,18 @@ class SearchAnyTime:
         self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
         self.init_solution = ds.H2(first_problem.boxList, first_problem.bin, optimized=True)
         self.Z = len(self.init_solution)
+        self.item_dict = {}
+
+    def check_item_count(self, sb_list):
+        if len(self.item_dict.keys()) == 0:
+            return True
+        for sb in sb_list:
+            box_list = sb.placement_best_solution
+            for key in self.item_dict.keys():
+                items = len([b for b in box_list if b.itemName == key])
+                if items < self.item_dict[key]:
+                    return False
+        return True
 
     def search(self):
         res = self.backtracking_search_optimized(self.first_problem)
@@ -131,22 +159,26 @@ class SearchAnyTime:
         if current_problem.get_l2_bound(current_problem.boxList) + current_problem.get_closed_bins() >= self.Z:
             return "fail"
         if not_placed_boxes == []:
-            return current_problem
-        box = not_placed_boxes[0]
-        for i in range(len(current_problem.M)):
-            if self.backtracking_condition(current_problem, i, box):
-                new_p, single_bin_result = self.assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
-                if single_bin_result == []:
-                    new_p.try_to_close(i, optimized=True)
-                    result = self.backtracking_search_optimized(new_p)
-                    if result != "fail":
-                        return result
-        if len(current_problem.M) < self.Z - 1:
-            new_p = self.assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=True)
-            result = self.backtracking_search_optimized(new_p)
-            if result != "fail":
-                return result
-        return "fail"
+            if self.check_item_count(current_problem.M):
+                return current_problem
+            else:
+                return "fail"
+        else:
+            box = not_placed_boxes[0]
+            for i in range(len(current_problem.M)):
+                if self.backtracking_condition(current_problem, i, box):
+                    new_p, single_bin_result = self.assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
+                    if single_bin_result == []:
+                        new_p.try_to_close(i, optimized=True)
+                        result = self.backtracking_search_optimized(new_p)
+                        if result != "fail":
+                            return result
+            if len(current_problem.M) < self.Z - 1:
+                new_p = self.assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=True)
+                result = self.backtracking_search_optimized(new_p)
+                if result != "fail":
+                    return result
+            return "fail"
 
     def search_info(self, results, INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, STRATEGY, FIRST_SOLUTION,
                     TIME_FIRST_SOLUTION):

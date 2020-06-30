@@ -237,6 +237,8 @@ class TestPalletizationModel(TestCase):
         self.assertEqual(res, [])
 
         boxList.append(ds.Box(500.0, 500.0, 500.0))
+        single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
+        single_bin.boxList = boxList
         res = single_bin.fillBin()
         if res != []:
             res = False
@@ -261,35 +263,6 @@ class TestPalletizationModel(TestCase):
         res = single_bin.fillBin()
         self.assertEqual(res, [])
 
-    # def test_single_bin_filling_iter(self):
-    #     single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
-    #     boxList = [ds.Box(500.0, 500.0, 500.0) for i in range(7)]
-    #     single_bin.boxList = boxList
-    #     res = single_bin.branch_and_bound_filling_iter()
-    #     self.assertEqual(len(single_bin.placement_best_solution), 7)
-    #     self.assertEqual(res, True)
-    #
-    #     boxList.append(ds.Box(500.0, 500.0, 500.0))
-    #     res = single_bin.branch_and_bound_filling_iter()
-    #     self.assertEqual(res, True)
-    #
-    #     boxList.append(ds.Box(500.0, 500.0, 500.0))
-    #     res = single_bin.branch_and_bound_filling_iter()
-    #     self.assertEqual(res, False)
-    #
-    #     bin = ds.Bin(10, 50, 10)
-    #     box_list = get_random_box_list_with_weight(10)
-    #     sb = ds.SingleBinProblem(bin)
-    #     sb.boxList = box_list
-    #     res = sb.branch_and_bound_filling_iter()
-    #     self.assertEqual(res, True)
-    #
-    #     random.seed(47)
-    #     single_bin = ds.SingleBinProblem(ds.Bin(1000.0, 1000.0, 1000.0))
-    #     boxList = [ds.Box(100.0, 200.0, 300.0) for i in range(150)]
-    #     single_bin.boxList = boxList
-    #     res = single_bin.branch_and_bound_filling_iter()
-    #     self.assertEqual(res, True)
 
     def test_below_boxes(self):
         box1 = ds.Box(4.0,5.0,3.0)
