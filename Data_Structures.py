@@ -160,11 +160,18 @@ NOT_PLACED_POINT = Point3D(-1, -1, -1)
 
 
 class Bin:
-    def __init__(self, width, height, depth):
+    def __init__(self, width, height, depth, maxWeight=1e10):
         self.width = width
         self.height = height
         self.depth = depth
         self.volume = self.width * self.height * self.depth
+        self.maxWeight = maxWeight
+
+    def get_maxWeight(self):
+        return self.maxWeight
+
+    def set_maxWeight(self, maxWeight):
+        self.maxWeight = maxWeight
 
     def get_volume(self):
         return self.volume
@@ -181,12 +188,15 @@ class Bin:
 
 class PalletizationModel:
 
-    def __init__(self, bin, boxList, openBins=None):
+    def __init__(self, bin, boxList, openBins=None, minDict={}, maxDict={}):
         if openBins is None:
             openBins = []
         self.boxList = boxList
         self.bin = bin
         self.M = openBins
+
+        self.minDict = minDict
+        self.maxDict = maxDict
 
     def final_state(self):
         return len(self.boxList) == 0
@@ -674,7 +684,7 @@ class SingleBinProblem:
 
 
 
-#Algoritmo per trovare la soluzione iniziale
+# Algoritmo per trovare la soluzione iniziale
 def H2(box_set, bin, m_cut=True, m=4, max_nodes=5000, optimized=False):
     box_set = [box for box in box_set]
     box_set = sorted(box_set, key=lambda box: box.get_volume(), reverse=False)

@@ -348,21 +348,21 @@ def multipleBinsManagement():
         #        cr.display_trajectory(plan)
 
         # [START] GENERAZIONE SCATOLE A MANO
-        bin = ds.Bin(0.1, 0.1, 0.1)
-        box_list1 = [ds.Box(0.02, 0.03, 0.04) for i in range(50)]
-        for box in box_list1:
-            box.itemName = "item1"
-        box_list2 = [ds.Box(0.04, 0.05, 0.02) for i in range(20)]
-        for box in box_list2:
-            box.itemName = "item2"
-        box_list3 = [ds.Box(0.06, 0.02, 0.03) for i in range(20)]
-        for box in box_list3:
-            box.itemName = "item3"
-        box_list = box_list2 + box_list3 + box_list1
+        # bin = ds.Bin(0.1, 0.1, 0.1)
+        # box_list1 = [ds.Box(0.02, 0.03, 0.04) for i in range(50)]
+        # for box in box_list1:
+        #     box.itemName = "item1"
+        # box_list2 = [ds.Box(0.04, 0.05, 0.02) for i in range(20)]
+        # for box in box_list2:
+        #     box.itemName = "item2"
+        # box_list3 = [ds.Box(0.06, 0.02, 0.03) for i in range(20)]
+        # for box in box_list3:
+        #     box.itemName = "item3"
+        # box_list = box_list2 + box_list3 + box_list1
         #  [END] GENERAZIONE SCATOLE A MANO
 
         # [START] LOAD SCATOLE XML
-        # box_list = xmlparser.xml2boxlist('boxlist.xml')
+        #box_list = xmlparser.xml2problem('boxlist.xml')
         # [END] LOAD SCATOLE XML
 
         # [START] gestione multibin
@@ -495,9 +495,9 @@ if __name__ == '__main__':
         vs060 = vs060Robot()
 
         # ROBOT GOES HOME
-        plan = vs060.go_to_joint_state(vs060.pick_pose, execute=True)
-        plan = vs060.go_to_joint_state(vs060.retry_point, execute=True)
-        plan = vs060.go_to_joint_state(vs060.origin_point, execute=True)
+        #plan = vs060.go_to_joint_state(vs060.pick_pose, execute=True)
+        #plan = vs060.go_to_joint_state(vs060.retry_point, execute=True)
+        #plan = vs060.go_to_joint_state(vs060.origin_point, execute=True)
         #plan = vs060.go_to_joint_state(vs060object_spawning_config, execute=True)
         #        cr.display_trajectory(plan)
 
@@ -516,7 +516,7 @@ if __name__ == '__main__':
         #  [END] GENERAZIONE SCATOLE A MANO
 
         # [START] LOAD SCATOLE XML
-        box_list = xmlparser.xml2boxlist('boxlist.xml')
+        box_list = xmlparser.xml2problem('boxlist.xml')
 
         # [END] LOAD SCATOLE XML
 
