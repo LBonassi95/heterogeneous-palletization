@@ -4,25 +4,130 @@ import Data_Structures as ds
 
 csv_format = "{},{},{},{},{},{},{},{},{}\n"
 
+
+def assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=False):
+    new_sbp = ds.SingleBinProblem(current_problem.bin)
+    new_sbp.add_boxes(box)
+    new_sbp.fillBin(optimized=optimized)
+    new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+    new_bins = [sbp.__copy__() for sbp in current_problem.M]
+    new_p = ds.PalletizationModel(current_problem.bin, new_not_placed_boxes, new_bins + [new_sbp])
+    new_p.try_to_close(len(new_p.M) - 1, optimized=optimized)
+    return new_p
+
+
+def assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=False):
+    new_p = current_problem.__copy__()
+    new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+    new_p.boxList = new_not_placed_boxes
+    new_sbp = new_p.M[i]
+    new_sbp.add_boxes(box)
+    h2_result = ds.H2(new_p.boxList, new_p.bin, optimized=optimized)
+    if len(h2_result) == 1:
+        new_p.M[i] = h2_result[0]
+        return new_p, []
+    single_bin_result = new_sbp.fillBin(optimized=optimized)
+    return new_p, single_bin_result
+
+
+def backtracking_condition(current_problem, i, box):
+    if current_problem.M[i].open:
+        l2 = current_problem.get_l2_bound(current_problem.M[i].boxList + [box])
+        if not l2 >= 2:
+            return True
+    return False
+
+
+def check_item_count(sb_list, min_item_dict, max_item_dict):
+    if len(max_item_dict.keys()) and (len(min_item_dict)) == 0:
+        return True
+    for sb in sb_list:
+        box_list = sb.placement_best_solution
+        for key in min_item_dict.keys():
+            items = len([b for b in box_list if b.itemName == key])
+            if items < min_item_dict[key]:
+                return False
+        for key in max_item_dict.keys():
+            items = len([b for b in box_list if b.itemName == key])
+            if items > max_item_dict[key]:
+                return False
+    return True
+
+
+def check_item_upper(sb_list, max_item_dict):
+    if len(max_item_dict.keys()) == 0:
+        return True
+    for sb in sb_list:
+        box_list = sb.placement_best_solution
+        for key in max_item_dict.keys():
+            items = len([b for b in box_list if b.itemName == key])
+            if items > max_item_dict[key]:
+                return False
+    return True
+
+
+class IDSearchMinMaxConstraints:
+
+    def __init__(self, first_problem, min_item_dict, max_item_dict):
+        self.first_problem = first_problem
+        self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
+        self.max_depth = self.first_problem.get_l2_bound(self.first_problem.boxList)
+        self.min_item_dict = min_item_dict
+        self.max_item_dict = max_item_dict
+
+    def inizialize_problem_depth(self, max_depth):
+        problem_copy = self.first_problem.__copy__()
+        problem_copy.boxList = self.first_problem.boxList
+        for i in range(int(max_depth)):
+            problem_copy.M.append(ds.SingleBinProblem(problem_copy.bin))
+        return problem_copy
+
+    def search_id(self):
+        max_depth = self.max_depth
+        problem = self.inizialize_problem_depth(max_depth)
+        res = self.backtracking_search_optimized_id_min_max(problem)
+        while res == 'fail':
+            max_depth += 1
+            print "aumento"
+            problem = self.inizialize_problem_depth(max_depth)
+            res = self.backtracking_search_optimized_id_min_max(problem)
+        return res
+
+    def backtracking_search_optimized_id_min_max(self, current_problem):
+        not_placed_boxes = current_problem.boxList
+        if not_placed_boxes == []:
+            if check_item_count(current_problem.M, self.min_item_dict, self.max_item_dict):
+                return current_problem
+            else:
+                return "fail"
+        else:
+            box = not_placed_boxes[0]
+            for i in range(len(current_problem.M)):
+                if backtracking_condition(current_problem, i, box) and check_item_upper(current_problem.M, self.max_item_dict):
+                    new_p, single_bin_result = self.assign_box_to_bin_min_max(box, current_problem, i, not_placed_boxes)
+                    if single_bin_result == []:
+                        result = self.backtracking_search_optimized_id_min_max(new_p)
+                        if result != "fail":
+                            return result
+            return "fail"
+
+
+    def assign_box_to_bin_min_max(self, box, current_problem, i, not_placed_boxes):
+        new_p = current_problem.__copy__()
+        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+        new_p.boxList = new_not_placed_boxes
+        new_sbp = new_p.M[i]
+        new_sbp.add_boxes(box)
+        single_bin_result = new_sbp.fillBin(optimized=True)
+        return new_p, single_bin_result
+
+
 class IDSearch:
 
     def __init__(self, first_problem):
         self.first_problem = first_problem
         self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
         self.max_depth = self.first_problem.get_l2_bound(self.first_problem.boxList)
-        self.item_dict = {}
-
-    def check_item_count(self, sb_list):
-        if len(self.item_dict.keys()) == 0:
-            return True
-        for sb in sb_list:
-            box_list = sb.placement_best_solution
-            for key in self.item_dict.keys():
-                items = len([b for b in box_list if b.itemName == key])
-                if items < self.item_dict[key]:
-                    return False
-        return True
-
 
     def search_id(self):
         res = self.backtracking_search_optimized_id(self.first_problem)
@@ -32,60 +137,26 @@ class IDSearch:
             res = self.backtracking_search_optimized_id(self.first_problem)
         return res
 
-
-    def assign_box_to_new_bin(self, box, current_problem, not_placed_boxes, optimized=False):
-        new_sbp = ds.SingleBinProblem(current_problem.bin)
-        new_sbp.add_boxes(box)
-        new_sbp.fillBin(optimized=optimized)
-        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
-        new_bins = [sbp.__copy__() for sbp in current_problem.M]
-        new_p = ds.PalletizationModel(current_problem.bin, new_not_placed_boxes, new_bins + [new_sbp])
-        new_p.try_to_close(len(new_p.M) - 1, optimized=optimized)
-        return new_p
-
-    def assign_box_to_bin(self, box, current_problem, i, not_placed_boxes, optimized=False):
-        new_p = current_problem.__copy__()
-        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
-        new_p.boxList = new_not_placed_boxes
-        new_sbp = new_p.M[i]
-        new_sbp.add_boxes(box)
-        h2_result = ds.H2(new_p.boxList, new_p.bin, optimized=optimized)
-        if len(h2_result) == 1:
-            new_p.M[i] = h2_result[0]
-            return new_p, []
-        single_bin_result = new_sbp.fillBin(optimized=optimized)
-        return new_p, single_bin_result
-
-    def backtracking_condition(self, current_problem, i, box):
-        if current_problem.M[i].open:
-            l2 = current_problem.get_l2_bound(current_problem.M[i].boxList + [box])
-            if not l2 >= 2:
-                return True
-        return False
-
     def backtracking_search_optimized_id(self, current_problem):
         not_placed_boxes = current_problem.boxList
         if not_placed_boxes == []:
-            if self.check_item_count(current_problem.M):
-                return current_problem
-            else:
-                return "fail"
-        else:
-            box = not_placed_boxes[0]
-            for i in range(len(current_problem.M)):
-                if self.backtracking_condition(current_problem, i, box):
-                    new_p, single_bin_result = self.assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
-                    if single_bin_result == []:
-                        new_p.try_to_close(i, optimized=True)
-                        result = self.backtracking_search_optimized_id(new_p)
-                        if result != "fail":
-                            return result
-            if len(current_problem.M) < self.max_depth:
-                new_p = self.assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=True)
-                result = self.backtracking_search_optimized_id(new_p)
-                if result != "fail":
-                    return result
-            return "fail"
+            return current_problem
+        box = not_placed_boxes[0]
+        for i in range(len(current_problem.M)):
+            if backtracking_condition(current_problem, i, box):
+                new_p, single_bin_result = assign_box_to_bin(box, current_problem, i, not_placed_boxes,
+                                                                  optimized=True)
+                if single_bin_result == []:
+                    new_p.try_to_close(i, optimized=True)
+                    result = self.backtracking_search_optimized_id(new_p)
+                    if result != "fail":
+                        return result
+        if len(current_problem.M) < self.max_depth:
+            new_p = assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=True)
+            result = self.backtracking_search_optimized_id(new_p)
+            if result != "fail":
+                return result
+        return "fail"
 
 
 class SearchAnyTime:
@@ -95,18 +166,6 @@ class SearchAnyTime:
         self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
         self.init_solution = ds.H2(first_problem.boxList, first_problem.bin, optimized=True)
         self.Z = len(self.init_solution)
-        self.item_dict = {}
-
-    def check_item_count(self, sb_list):
-        if len(self.item_dict.keys()) == 0:
-            return True
-        for sb in sb_list:
-            box_list = sb.placement_best_solution
-            for key in self.item_dict.keys():
-                items = len([b for b in box_list if b.itemName == key])
-                if items < self.item_dict[key]:
-                    return False
-        return True
 
     def search(self):
         res = self.backtracking_search_optimized(self.first_problem)
@@ -121,37 +180,7 @@ class SearchAnyTime:
             self.Z = len(res.M)
             res = self.backtracking_search_optimized(self.first_problem)
             print "soluzione trovata"
-        return solutions[len(solutions)-1]
-
-    def assign_box_to_new_bin(self, box, current_problem, not_placed_boxes, optimized=False):
-        new_sbp = ds.SingleBinProblem(current_problem.bin)
-        new_sbp.add_boxes(box)
-        new_sbp.fillBin(optimized=optimized)
-        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
-        new_bins = [sbp.__copy__() for sbp in current_problem.M]
-        new_p = ds.PalletizationModel(current_problem.bin, new_not_placed_boxes, new_bins + [new_sbp])
-        new_p.try_to_close(len(new_p.M) - 1, optimized=optimized)
-        return new_p
-
-    def assign_box_to_bin(self, box, current_problem, i, not_placed_boxes, optimized=False):
-        new_p = current_problem.__copy__()
-        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
-        new_p.boxList = new_not_placed_boxes
-        new_sbp = new_p.M[i]
-        new_sbp.add_boxes(box)
-        h2_result = ds.H2(new_p.boxList, new_p.bin, optimized=optimized)
-        if len(h2_result) == 1:
-            new_p.M[i] = h2_result[0]
-            return new_p, []
-        single_bin_result = new_sbp.fillBin(optimized=optimized)
-        return new_p, single_bin_result
-
-    def backtracking_condition(self, current_problem, i, box):
-        if current_problem.M[i].open:
-            l2 = current_problem.get_l2_bound(current_problem.M[i].boxList + [box])
-            if not l2 >= 2:
-                return True
-        return False
+        return solutions[len(solutions) - 1]
 
     #Main Branching Tree dell'articolo
     def backtracking_search_optimized(self, current_problem):
@@ -159,26 +188,22 @@ class SearchAnyTime:
         if current_problem.get_l2_bound(current_problem.boxList) + current_problem.get_closed_bins() >= self.Z:
             return "fail"
         if not_placed_boxes == []:
-            if self.check_item_count(current_problem.M):
-                return current_problem
-            else:
-                return "fail"
-        else:
-            box = not_placed_boxes[0]
-            for i in range(len(current_problem.M)):
-                if self.backtracking_condition(current_problem, i, box):
-                    new_p, single_bin_result = self.assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
-                    if single_bin_result == []:
-                        new_p.try_to_close(i, optimized=True)
-                        result = self.backtracking_search_optimized(new_p)
-                        if result != "fail":
-                            return result
-            if len(current_problem.M) < self.Z - 1:
-                new_p = self.assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=True)
-                result = self.backtracking_search_optimized(new_p)
-                if result != "fail":
-                    return result
-            return "fail"
+            return current_problem
+        box = not_placed_boxes[0]
+        for i in range(len(current_problem.M)):
+            if backtracking_condition(current_problem, i, box):
+                new_p, single_bin_result = assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
+                if single_bin_result == []:
+                    new_p.try_to_close(i, optimized=True)
+                    result = self.backtracking_search_optimized(new_p)
+                    if result != "fail":
+                        return result
+        if len(current_problem.M) < self.Z - 1:
+            new_p = assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=True)
+            result = self.backtracking_search_optimized(new_p)
+            if result != "fail":
+                return result
+        return "fail"
 
     def search_info(self, results, INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, STRATEGY, FIRST_SOLUTION,
                     TIME_FIRST_SOLUTION):

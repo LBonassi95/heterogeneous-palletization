@@ -560,27 +560,49 @@ class TestPalletizationModel(TestCase):
         print("--- %s seconds ---" % (time.time() - start_time))
         self.assertEqual(res, False)
 
-        # sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
-        # box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
-        # box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
-        # box_list3 = [ds.Box(2, 2, 4) for i in range(3)]
-        # for box in box_list1:
-        #     box.itemName = 'item1'
-        #     box.weight = 10
-        #     box.maximumWeight = 10
-        # for box in box_list2:
-        #     box.itemName = 'item2'
-        #     box.weight = 5
-        #     box.maximumWeight = 5
-        # for box in box_list3:
-        #     box.itemName = 'item3'
-        #     box.weight = 4
-        #     box.maximumWeight = 4
-        # sb.boxList = box_list1 + box_list2 + box_list3
-        # start_time = time.time()
-        # res = sb.branch_and_bound_filling([], sb.boxList)
-        # print("--- %s seconds ---" % (time.time() - start_time))
-        # self.assertEqual(res, False)
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(2)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
+        sb.boxList = box_list1 + box_list2 + box_list3
+        sb.max_weight = 83
+        res = sb.branch_and_bound_filling_optimized([], sb.boxList)
+        self.assertEqual(res, True)
+
+        sb = ds.SingleBinProblem(ds.Bin(3.0, 9.0, 10.0))
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(2)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
+        sb.boxList = box_list1 + box_list2 + box_list3
+        sb.max_weight = 82
+        res = sb.branch_and_bound_filling_optimized([], sb.boxList)
+        self.assertEqual(res, False)
+
+
 
     def test_overlapping_boxes(self):
         box1 = ds.Box(3, 5, 2)
@@ -797,6 +819,45 @@ class TestPalletizationModel(TestCase):
                     self.fail()
         print len(res.M)
         self.assertEqual(True, True)
+
+    def test_Id_item_count(self):
+        bin = ds.Bin(5, 6, 5)
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(5)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
+        box_list = box_list1 + box_list2 + box_list3
+        for i in range(len(box_list)):
+            box_list[i].id = i
+        min_item_dict = {'item1': 1, 'item2': 1, 'item3': 1}
+        max_item_dict = {'item1': 4, 'item2': 4, 'item3': 4}
+        s = searches.IDSearchMinMaxConstraints(ds.PalletizationModel(bin, box_list), min_item_dict, max_item_dict)
+        res = s.search_id()
+        for m in res.M:
+            others = [m2 for m2 in res.M if m2 != m]
+            other_boxes_id = []
+            for m2 in others:
+                for box2 in m2.placement_best_solution:
+                    other_boxes_id.append(box2.id)
+            for box in m.placement_best_solution:
+                if box.id in other_boxes_id:
+                    self.fail()
+                if box.position == ds.Point3D(-1, -1, -1):
+                    self.fail()
+        print len(res.M)
+        self.assertEqual(True, True)
+
 
 
 
