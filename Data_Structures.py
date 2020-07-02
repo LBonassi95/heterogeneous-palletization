@@ -203,6 +203,8 @@ class PalletizationModel:
 
     def __copy__(self):
         copy = PalletizationModel(self.bin, [], openBins=[b.__copy__() for b in self.M])
+        copy.minDict = self.minDict
+        copy.maxDict = self.maxDict
         return copy
 
     def get_bin(self):
@@ -306,15 +308,16 @@ class PalletizationModel:
         if len(self.maxDict.keys()) and (len(self.minDict.keys())) == 0:
             return True
         for sb in self.M:
-            box_list = sb.placement_best_solution
-            for key in self.minDict.keys():
-                items = len([b for b in box_list if b.itemName == key])
-                if items < self.minDict[key]:
-                    return False
-            for key in self.maxDict.keys():
-                items = len([b for b in box_list if b.itemName == key])
-                if items > self.maxDict[key]:
-                    return False
+            if len(sb.placement_best_solution) > 0:
+                box_list = sb.placement_best_solution
+                for key in self.minDict.keys():
+                    items = len([b for b in box_list if b.itemName == key])
+                    if items < self.minDict[key]:
+                        return False
+                for key in self.maxDict.keys():
+                    items = len([b for b in box_list if b.itemName == key])
+                    if items > self.maxDict[key]:
+                        return False
         return True
 
     def check_item_upper(self):

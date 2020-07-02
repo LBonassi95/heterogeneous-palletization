@@ -10,7 +10,7 @@ import searches
 csv_format = "{},{},{},{},{},{},{},{},{}\n"
 
 
-def execute_test(box_list, bin, results, i):
+def execute_test(box_list, bin, i):
     INSTANCE = i
     box_list = box_list
     categories = set()
@@ -21,7 +21,7 @@ def execute_test(box_list, bin, results, i):
     SPLIT = ""
     for c in categories:
         card_cat = len([box for box in box_list if box.itemName == c])
-        SPLIT = SPLIT + str(card_cat/len(box_list)) + ":"
+        SPLIT = SPLIT + str(float(card_cat)/float(len(box_list))) + ":"
     model = ds.PalletizationModel(bin, box_list)
 
     # iterative deepening
@@ -34,20 +34,22 @@ def execute_test(box_list, bin, results, i):
     res = s.search_id()
     TIME_OPTIMAL_SOLUTION = time.time() - start_time_id
     SOLUTION = len(res.M)
+    results = open("./Test/results.csv", 'a', 0)
     results.write(csv_format.format(INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, "ID", FIRST_SOLUTION,
                                     TIME_FIRST_SOLUTION, SOLUTION, TIME_OPTIMAL_SOLUTION))
+    results.close()
 
     # AnyTime
     model = ds.PalletizationModel(bin, box_list)
     s = searches.SearchAnyTime(model)
-    s.search_info(results, INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, "ANY", FIRST_SOLUTION,
+    s.search_info(INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, "ANY", FIRST_SOLUTION,
                                     TIME_FIRST_SOLUTION)
 
 
-def getBoxes(i):
-    box_list1 = [ds.Box(3, 5, 2) for i in range(5 + i)]
-    box_list2 = [ds.Box(2, 2, 2) for i in range(5 + i)]
-    box_list3 = [ds.Box(2, 2, 4) for i in range(5 + i)]
+def getBoxes(j):
+    box_list1 = [ds.Box(3, 5, 2) for i in range(5 + j)]
+    box_list2 = [ds.Box(2, 2, 2) for i in range(5 + j)]
+    box_list3 = [ds.Box(2, 2, 4) for i in range(5 + j)]
     for box in box_list1:
         box.itemName = 'item1'
         box.weight = 10
@@ -67,13 +69,14 @@ def getBoxes(i):
 
 
 def main():
-    results = open("./Test/results.csv", 'w')
+    results = open("./Test/results.csv", 'a', 0)
     results.write("INSTANCE,TOT_BOXES,NUM_CATEGORIES,SPLIT,STRATEGY,H2_SOLUTION,TIME_H2_SOLUTION,SOLUTION,TIME_SOLUTION \n")
-    bin = ds.Bin(5, 5, 5)
-    for i in range(5):
-        box_list = getBoxes(i)
-        execute_test(box_list, bin, results, i)
     results.close()
+    bin = ds.Bin(10, 10, 10)
+    for i in range(50):
+        box_list = getBoxes(i)
+        execute_test(box_list, bin, i)
+        print "test fatto"
 
 
 
