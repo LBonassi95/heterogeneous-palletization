@@ -290,8 +290,9 @@ class PalletizationModel:
         if len(try_to_place_list) == 0:
             sp.open = False
         else:
-            if not self.get_l2_bound(try_to_place_list) >= 2:
-                sb_list = H2(sp.boxList + try_to_place_list, self.bin, optimized=optimized)
+            if not self.get_l2_bound(sp.placement_best_solution + try_to_place_list) >= 2:
+                box_in_bin = [box.copy() for box in sp.placement_best_solution]
+                sb_list = H2(box_in_bin + try_to_place_list, self.bin, optimized=optimized)
                 if len(sb_list) == 1:
                     sb_list[0].open = False
                     self.M[i] = sb_list[0]
@@ -301,11 +302,36 @@ class PalletizationModel:
     def get_closed_bins(self):
         return len([m for m in self.M if m.open == False])
 
+    def check_item_count(self):
+        if len(self.maxDict.keys()) and (len(self.minDict.keys())) == 0:
+            return True
+        for sb in self.M:
+            box_list = sb.placement_best_solution
+            for key in self.minDict.keys():
+                items = len([b for b in box_list if b.itemName == key])
+                if items < self.minDict[key]:
+                    return False
+            for key in self.maxDict.keys():
+                items = len([b for b in box_list if b.itemName == key])
+                if items > self.maxDict[key]:
+                    return False
+        return True
+
+    def check_item_upper(self):
+        if len(self.maxDict.keys()) == 0:
+            return True
+        for sb in self.M:
+            box_list = sb.placement_best_solution
+            for key in self.maxDict.keys():
+                items = len([b for b in box_list if b.itemName == key])
+                if items > self.maxDict[key]:
+                    return False
+        return True
+
 
 class SingleBinProblem:
 
     def __init__(self, bin):
-        self.max_weight = 1e10
         self.bin = bin
         self.boxList = []
         self.open = True
@@ -459,6 +485,7 @@ class SingleBinProblem:
         return True
 
     def reset_problem(self):
+        self.F = -1
         for b in self.boxList:
             b.position = NOT_PLACED_POINT
         self.placement_best_solution = []
@@ -680,7 +707,7 @@ class SingleBinProblem:
 
     def check_pallet_weight(self, boxes):
         weight_pallet = sum([b.weight for b in boxes])
-        return weight_pallet <= self.max_weight
+        return weight_pallet <= self.bin.maxWeight
 
 
 

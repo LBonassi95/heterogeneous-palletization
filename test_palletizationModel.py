@@ -577,7 +577,7 @@ class TestPalletizationModel(TestCase):
             box.weight = 4
             box.maximumWeight = 4
         sb.boxList = box_list1 + box_list2 + box_list3
-        sb.max_weight = 83
+        sb.bin.maxWeight = 83
         res = sb.branch_and_bound_filling_optimized([], sb.boxList)
         self.assertEqual(res, True)
 
@@ -598,7 +598,7 @@ class TestPalletizationModel(TestCase):
             box.weight = 4
             box.maximumWeight = 4
         sb.boxList = box_list1 + box_list2 + box_list3
-        sb.max_weight = 82
+        sb.bin.maxWeight = 82
         res = sb.branch_and_bound_filling_optimized([], sb.boxList)
         self.assertEqual(res, False)
 
@@ -744,9 +744,9 @@ class TestPalletizationModel(TestCase):
         self.assertEqual(True, True)
 
         bin = ds.Bin(5, 5, 5)
-        box_list1 = [ds.Box(3, 5, 2) for i in range(30)]
-        box_list2 = [ds.Box(2, 2, 2) for i in range(30)]
-        box_list3 = [ds.Box(2, 2, 4) for i in range(30)]
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(5)]
         for box in box_list1:
             box.itemName = 'item1'
             box.weight = 10
@@ -764,6 +764,11 @@ class TestPalletizationModel(TestCase):
             box_list[i].id = i
         s = searches.IDSearch(ds.PalletizationModel(bin, box_list))
         res = s.search_id()
+        tot_boxes = []
+        for m in res.M:
+            for box in m.placement_best_solution:
+                tot_boxes.append(box)
+        self.assertEqual(len(tot_boxes), 15)
         for m in res.M:
             others = [m2 for m2 in res.M if m2 != m]
             other_boxes_id = []
@@ -772,12 +777,13 @@ class TestPalletizationModel(TestCase):
                     other_boxes_id.append(box2.id)
             for box in m.placement_best_solution:
                 if box.id in other_boxes_id:
+                    print "doppione"
                     self.fail()
                 if box.position == ds.Point3D(-1, -1, -1):
+                    print "scatola non piazzata"
                     self.fail()
         print len(res.M)
         self.assertEqual(True, True)
-
 
     def test_any_time(self):
         bin = ds.Bin(10, 10, 10)
@@ -786,6 +792,11 @@ class TestPalletizationModel(TestCase):
             box_list[i].id = i
         s = searches.SearchAnyTime(ds.PalletizationModel(bin, box_list))
         res = s.search()
+        tot_boxes = []
+        for m in res.M:
+            for box in m.placement_best_solution:
+                tot_boxes.append(box)
+        self.assertEqual(len(tot_boxes), 20)
         for m in res.M:
             others = [m2 for m2 in res.M if m2 != m]
             other_boxes_id = []
@@ -800,8 +811,25 @@ class TestPalletizationModel(TestCase):
         print len(res.M)
         self.assertEqual(True, True)
 
-        bin = ds.Bin(8, 8, 8)
-        box_list = XmlParser.xml2boxlist("boxlist.xml")
+        bin = ds.Bin(6, 6, 6)
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(5)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 1e10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 1e10
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 1e10
+        box_list = box_list1 + box_list2 + box_list3
+        for i in range(len(box_list)):
+            box_list[i].id = i
         for i in range(len(box_list)):
             box_list[i].id = i
         s = searches.SearchAnyTime(ds.PalletizationModel(bin, box_list))
@@ -821,7 +849,7 @@ class TestPalletizationModel(TestCase):
         self.assertEqual(True, True)
 
     def test_Id_item_count(self):
-        bin = ds.Bin(5, 6, 5)
+        bin = ds.Bin(5, 7, 5)
         box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
         box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
         box_list3 = [ds.Box(2, 2, 4) for i in range(5)]
@@ -842,8 +870,14 @@ class TestPalletizationModel(TestCase):
             box_list[i].id = i
         min_item_dict = {'item1': 1, 'item2': 1, 'item3': 1}
         max_item_dict = {'item1': 4, 'item2': 4, 'item3': 4}
-        s = searches.IDSearchMinMaxConstraints(ds.PalletizationModel(bin, box_list), min_item_dict, max_item_dict)
+        s = searches.IDSearchMinMaxConstraints(ds.PalletizationModel(bin,
+                                                                     box_list, minDict=min_item_dict, maxDict=max_item_dict))
         res = s.search_id()
+        tot_boxes = []
+        for m in res.M:
+            for box in m.placement_best_solution:
+                tot_boxes.append(box)
+        self.assertEqual(len(tot_boxes), 15)
         for m in res.M:
             others = [m2 for m2 in res.M if m2 != m]
             other_boxes_id = []
