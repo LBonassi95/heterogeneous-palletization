@@ -305,31 +305,39 @@ class PalletizationModel:
         return len([m for m in self.M if m.open == False])
 
     def check_item_count(self):
-        if len(self.maxDict.keys()) and (len(self.minDict.keys())) == 0:
+        return self.check_item_upper() and self.check_item_lower()
+
+    def check_item_upper(self):
+        if len(self.maxDict.keys()) == 0:
             return True
+        return len(self.get_upper_violations()) == 0
+
+    def check_item_lower(self):
+        if len(self.minDict.keys()) == 0:
+            return True
+        return len(self.get_lower_violations()) == 0
+
+    def get_upper_violations(self):
+        upper_violations = set()
+        for sb in self.M:
+            if len(sb.placement_best_solution) > 0:
+                box_list = sb.placement_best_solution
+                for key in self.maxDict.keys():
+                    items = len([b for b in box_list if b.itemName == key])
+                    if items > self.maxDict[key]:
+                        upper_violations.add(sb)
+        return upper_violations
+
+    def get_lower_violations(self):
+        lower_violations = set()
         for sb in self.M:
             if len(sb.placement_best_solution) > 0:
                 box_list = sb.placement_best_solution
                 for key in self.minDict.keys():
                     items = len([b for b in box_list if b.itemName == key])
                     if items < self.minDict[key]:
-                        return False
-                for key in self.maxDict.keys():
-                    items = len([b for b in box_list if b.itemName == key])
-                    if items > self.maxDict[key]:
-                        return False
-        return True
-
-    def check_item_upper(self):
-        if len(self.maxDict.keys()) == 0:
-            return True
-        for sb in self.M:
-            box_list = sb.placement_best_solution
-            for key in self.maxDict.keys():
-                items = len([b for b in box_list if b.itemName == key])
-                if items > self.maxDict[key]:
-                    return False
-        return True
+                        lower_violations.add(sb)
+        return lower_violations
 
 
 class SingleBinProblem:

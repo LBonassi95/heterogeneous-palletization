@@ -874,6 +874,7 @@ class TestPalletizationModel(TestCase):
                                                                      box_list, minDict=min_item_dict, maxDict=max_item_dict))
         res = s.search_id()
         tot_boxes = []
+        self.assertEqual(True, res.check_item_count())
         for m in res.M:
             for box in m.placement_best_solution:
                 tot_boxes.append(box)
@@ -917,6 +918,7 @@ class TestPalletizationModel(TestCase):
         s = searches.SearchAnyTimeMinMax(ds.PalletizationModel(bin, box_list, minDict=min_item_dict, maxDict=max_item_dict))
         res = s.search()
         tot_boxes = []
+        self.assertEqual(True, res.check_item_count())
         for m in res.M:
             for box in m.placement_best_solution:
                 tot_boxes.append(box)
@@ -934,6 +936,67 @@ class TestPalletizationModel(TestCase):
                     self.fail()
         print len(res.M)
         self.assertEqual(True, True)
+
+        bin = ds.Bin(5, 5, 5)
+        box_list1 = [ds.Box(3, 5, 2) for i in range(2)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(2)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(2)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
+        box_list = box_list1 + box_list2 + box_list3
+        for i in range(len(box_list)):
+            box_list[i].id = i
+        min_item_dict = {'item1': 2, 'item2': 2, 'item3': 2}
+        max_item_dict = {'item1': 4, 'item2': 4, 'item3': 4}
+        s = searches.SearchAnyTimeMinMax(
+            ds.PalletizationModel(bin, box_list, minDict=min_item_dict, maxDict=max_item_dict))
+        res = s.search()
+        self.assertEqual(res, "fail")
+
+
+    def test_lower_feasibility(self):
+        bin = ds.Bin(5, 7, 5)
+        box_list1 = [ds.Box(3, 5, 2) for i in range(5)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(5)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(2)]
+        for box in box_list1:
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
+        for box in box_list2:
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
+        for box in box_list3:
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
+        box_list = box_list1 + box_list2 + box_list3
+        for i in range(len(box_list)):
+            box_list[i].id = i
+        min_item_dict = {'item1': 1, 'item2': 1, 'item3': 1}
+        max_item_dict = {'item1': 4, 'item2': 4, 'item3': 4}
+        problem = ds.PalletizationModel(bin, box_list, minDict=min_item_dict, maxDict=max_item_dict)
+        sb1 = ds.SingleBinProblem(bin)
+        sb2 = ds.SingleBinProblem(bin)
+        sb1.placement_best_solution = box_list1 + box_list2
+        sb2.placement_best_solution = box_list1 + box_list2
+        problem.M.append(sb1)
+        problem.M.append(sb2)
+        self.assertEqual(True, searches.check_min_bound_feasibility(problem, box_list3))
+        box_list3.remove(box_list3[0])
+        self.assertEqual(False, searches.check_min_bound_feasibility(problem, box_list3))
+
 
 
 

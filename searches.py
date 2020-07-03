@@ -38,6 +38,31 @@ def backtracking_condition(current_problem, i, box):
     return False
 
 
+def assign_box_to_bin_min_max(box, current_problem, i, not_placed_boxes):
+    new_p = current_problem.__copy__()
+    new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+    new_p.boxList = new_not_placed_boxes
+    new_sbp = new_p.M[i]
+    new_sbp.add_boxes(box)
+    single_bin_result = new_sbp.fillBin(optimized=True)
+    return new_p, single_bin_result
+
+
+def check_min_bound_feasibility(problem, not_placed_boxes):
+    lower_violation = problem.get_lower_violations()
+    items = problem.minDict.keys()
+    for item in items:
+        remaining_items = len([b for b in not_placed_boxes if b.itemName == item])
+        for sb in lower_violation:
+            items_placed = len([b for b in sb.placement_best_solution if b.itemName == item])
+            if items_placed < problem.minDict[item]:
+                to_add = problem.minDict[item] - items_placed
+                remaining_items -= to_add
+                if remaining_items < 0:
+                    return False
+    return True
+
+
 class IDSearchMinMaxConstraints:
 
     def __init__(self, first_problem):
@@ -73,23 +98,15 @@ class IDSearchMinMaxConstraints:
         else:
             box = not_placed_boxes[0]
             for i in range(len(current_problem.M)):
-                if backtracking_condition(current_problem, i, box) and current_problem.check_item_upper():
-                    new_p, single_bin_result = self.assign_box_to_bin_min_max(box, current_problem, i, not_placed_boxes)
+                if backtracking_condition(current_problem, i, box)\
+                        and current_problem.check_item_upper()\
+                        and check_min_bound_feasibility(current_problem, not_placed_boxes):
+                    new_p, single_bin_result = assign_box_to_bin_min_max(box, current_problem, i, not_placed_boxes)
                     if single_bin_result == []:
                         result = self.backtracking_search_optimized_id_min_max(new_p)
                         if result != "fail":
                             return result
             return "fail"
-
-
-    def assign_box_to_bin_min_max(self, box, current_problem, i, not_placed_boxes):
-        new_p = current_problem.__copy__()
-        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
-        new_p.boxList = new_not_placed_boxes
-        new_sbp = new_p.M[i]
-        new_sbp.add_boxes(box)
-        single_bin_result = new_sbp.fillBin(optimized=True)
-        return new_p, single_bin_result
 
 
 class SearchAnyTimeMinMax:
@@ -144,15 +161,15 @@ class SearchAnyTimeMinMax:
         else:
             box = not_placed_boxes[0]
             for i in range(len(current_problem.M)):
-                if backtracking_condition(current_problem, i, box) and current_problem.check_item_upper():
-                    new_p, single_bin_result = assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
+                if backtracking_condition(current_problem, i, box)\
+                        and current_problem.check_item_upper()\
+                        and check_min_bound_feasibility(current_problem, not_placed_boxes):
+                    new_p, single_bin_result = assign_box_to_bin_min_max(box, current_problem, i, not_placed_boxes)
                     if single_bin_result == []:
-                        new_p.try_to_close(i, optimized=True)
                         result = self.backtracking_search_optimized(new_p)
                         if result != "fail":
                             return result
             return "fail"
-
 
 
     def search_info(self, INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, STRATEGY, FIRST_SOLUTION,
@@ -192,6 +209,8 @@ class IDSearch:
             self.max_depth += 1
             print "aumento"
             res = self.backtracking_search_optimized_id(self.first_problem)
+            if self.max_depth >= self.first_problem.boxList:
+                return 'fail'
         return res
 
     def backtracking_search_optimized_id(self, current_problem):
