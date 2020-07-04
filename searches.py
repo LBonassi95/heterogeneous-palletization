@@ -86,6 +86,8 @@ class IDSearchMinMaxConstraints:
             print "aumento"
             problem = self.inizialize_problem_depth(max_depth)
             res = self.backtracking_search_optimized_id_min_max(problem)
+            if self.max_depth >= len(self.first_problem.boxList):
+                return 'fail'
         return res
 
     def backtracking_search_optimized_id_min_max(self, current_problem):
@@ -98,8 +100,8 @@ class IDSearchMinMaxConstraints:
         else:
             box = not_placed_boxes[0]
             for i in range(len(current_problem.M)):
-                if backtracking_condition(current_problem, i, box)\
-                        and current_problem.check_item_upper()\
+                if backtracking_condition(current_problem, i, box) \
+                        and current_problem.check_item_upper() \
                         and check_min_bound_feasibility(current_problem, not_placed_boxes):
                     new_p, single_bin_result = assign_box_to_bin_min_max(box, current_problem, i, not_placed_boxes)
                     if single_bin_result == []:
@@ -117,14 +119,12 @@ class SearchAnyTimeMinMax:
         self.init_solution = ds.H2(first_problem.boxList, first_problem.bin, optimized=True)
         self.Z = len(first_problem.boxList)
 
-
     def inizialize_problem_depth(self):
         problem_copy = self.first_problem.__copy__()
         problem_copy.boxList = self.first_problem.boxList
         for i in range(int(self.Z)):
             problem_copy.M.append(ds.SingleBinProblem(problem_copy.bin))
         return problem_copy
-
 
     def search(self):
         problem = self.inizialize_problem_depth()
@@ -148,7 +148,7 @@ class SearchAnyTimeMinMax:
                 print "soluzione trovata bin:" + str(len(res.M))
         return solutions[len(solutions) - 1]
 
-    #Main Branching Tree dell'articolo
+    # Main Branching Tree dell'articolo
     def backtracking_search_optimized(self, current_problem):
         not_placed_boxes = current_problem.boxList
         if current_problem.get_l2_bound(current_problem.boxList) + current_problem.get_closed_bins() >= self.Z:
@@ -161,8 +161,8 @@ class SearchAnyTimeMinMax:
         else:
             box = not_placed_boxes[0]
             for i in range(len(current_problem.M)):
-                if backtracking_condition(current_problem, i, box)\
-                        and current_problem.check_item_upper()\
+                if backtracking_condition(current_problem, i, box) \
+                        and current_problem.check_item_upper() \
                         and check_min_bound_feasibility(current_problem, not_placed_boxes):
                     new_p, single_bin_result = assign_box_to_bin_min_max(box, current_problem, i, not_placed_boxes)
                     if single_bin_result == []:
@@ -170,7 +170,6 @@ class SearchAnyTimeMinMax:
                         if result != "fail":
                             return result
             return "fail"
-
 
     def search_info(self, INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, STRATEGY, FIRST_SOLUTION,
                     TIME_FIRST_SOLUTION):
@@ -188,7 +187,7 @@ class SearchAnyTimeMinMax:
         while res != "fail":
             results = open("./Test/results.csv", 'a', 0)
             results.write(csv_format.format(INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, STRATEGY, FIRST_SOLUTION,
-                                            TIME_FIRST_SOLUTION, len(res.M), time.time()-start_time))
+                                            TIME_FIRST_SOLUTION, len(res.M), time.time() - start_time))
             results.close()
             solutions.append(res)
             self.Z = len(res.M)
@@ -202,6 +201,8 @@ class IDSearch:
         self.first_problem = first_problem
         self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
         self.max_depth = self.first_problem.get_l2_bound(self.first_problem.boxList)
+        self.lower_bounds = []
+        self.optimal_solutions = []
 
     def search_id(self):
         res = self.backtracking_search_optimized_id(self.first_problem)
@@ -209,26 +210,23 @@ class IDSearch:
             self.max_depth += 1
             print "aumento"
             res = self.backtracking_search_optimized_id(self.first_problem)
-            if self.max_depth >= self.first_problem.boxList:
-                return 'fail'
         return res
 
     def backtracking_search_optimized_id(self, current_problem):
-        tot_boxes = []
-        for m in current_problem.M:
-            for box in m.placement_best_solution:
-                if box.position == ds.Point3D(-1, -1, -1):
-                    print "hey"
-                tot_boxes.append(box)
-        debug = len(tot_boxes)
         not_placed_boxes = current_problem.boxList
         if not_placed_boxes == []:
             return current_problem
         box = not_placed_boxes[0]
         for i in range(len(current_problem.M)):
-            if backtracking_condition(current_problem, i, box):
-                new_p, single_bin_result = assign_box_to_bin(box, current_problem, i, not_placed_boxes,
-                                                                  optimized=True)
+            if backtracking_condition(current_problem, i, box)\
+                    and check_lower_bound(self.lower_bounds, current_problem.M[i].boxList + [box]):
+                new_p, single_bin_result = assign_box_to_bin_v2(box,
+                                                                current_problem,
+                                                                i,
+                                                                not_placed_boxes,
+                                                                self.optimal_solutions,
+                                                                self.lower_bounds,
+                                                                optimized=True)
                 if single_bin_result == []:
                     new_p.try_to_close(i, optimized=True)
                     result = self.backtracking_search_optimized_id(new_p)
@@ -249,6 +247,8 @@ class SearchAnyTime:
         self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
         self.init_solution = ds.H2(first_problem.boxList, first_problem.bin, optimized=True)
         self.Z = len(self.init_solution)
+        self.lower_bounds = []
+        self.optimal_solutions = []
 
     def search(self):
         res = self.backtracking_search_optimized(self.first_problem)
@@ -258,6 +258,8 @@ class SearchAnyTime:
             return p
         solutions = []
         print "soluzione trovata bin:" + str(len(res.M))
+        if len(res.M) == self.first_problem.get_l2_bound(self.first_problem.boxList):
+            return res
         while res != "fail":
             solutions.append(res)
             self.Z = len(res.M)
@@ -266,7 +268,7 @@ class SearchAnyTime:
                 print "soluzione trovata bin:" + str(len(res.M))
         return solutions[len(solutions) - 1]
 
-    #Main Branching Tree dell'articolo
+    # Main Branching Tree dell'articolo
     def backtracking_search_optimized(self, current_problem):
         not_placed_boxes = current_problem.boxList
         if current_problem.get_l2_bound(current_problem.boxList) + current_problem.get_closed_bins() >= self.Z:
@@ -275,8 +277,15 @@ class SearchAnyTime:
             return current_problem
         box = not_placed_boxes[0]
         for i in range(len(current_problem.M)):
-            if backtracking_condition(current_problem, i, box):
-                new_p, single_bin_result = assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
+            if backtracking_condition(current_problem, i, box) \
+                    and check_lower_bound(self.lower_bounds, current_problem.M[i].boxList + [box]):
+                new_p, single_bin_result = assign_box_to_bin_v2(box,
+                                                                current_problem,
+                                                                i,
+                                                                not_placed_boxes,
+                                                                self.optimal_solutions,
+                                                                self.lower_bounds,
+                                                                optimized=True)
                 if single_bin_result == []:
                     new_p.try_to_close(i, optimized=True)
                     result = self.backtracking_search_optimized(new_p)
@@ -305,9 +314,68 @@ class SearchAnyTime:
         while res != "fail":
             results = open("./Test/results.csv", 'a', 0)
             results.write(csv_format.format(INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, STRATEGY, FIRST_SOLUTION,
-                                            TIME_FIRST_SOLUTION, len(res.M), time.time()-start_time))
+                                            TIME_FIRST_SOLUTION, len(res.M), time.time() - start_time))
             results.close()
             solutions.append(res)
             self.Z = len(res.M)
             start_time = time.time()
             res = self.backtracking_search_optimized(self.first_problem)
+
+
+def insert_lower_bound(lower_bounds, box_list):
+    bs = ds.BoxSet(box_list)
+    lower_bounds.append(bs)
+    #print "dimensione lower bound:" + str(len(lower_bounds))
+
+
+def check_lower_bound(lower_bounds, box_list):
+    if ds.BoxSet(box_list) in lower_bounds:
+        #print "match lower bound"
+        return False
+    return True
+
+
+def add_optimal_solution(optimal_solutions, placement_best_solution):
+    bs = ds.BoxSet(placement_best_solution)
+    bs.add_placement(placement_best_solution)
+    optimal_solutions.append(bs)
+    #print "dimensione delle soluzioni ottime:" + str(len(optimal_solutions))
+
+
+def get_soluzione_ottima(bs, optimal_solutions):
+    for opt in optimal_solutions:
+        if bs.__eq__(opt):
+             return opt
+    return None
+
+
+def assign_box_to_bin_v2(box, current_problem, i, not_placed_boxes, optimal_solutions, lower_bounds, optimized=True):
+    to_place = [box] + current_problem.M[i].boxList
+    bs = ds.BoxSet(to_place)
+    optimal_placement = get_soluzione_ottima(bs, optimal_solutions)
+    if optimal_placement is None:
+        new_p = current_problem.__copy__()
+        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+        new_p.boxList = new_not_placed_boxes
+        new_sbp = new_p.M[i]
+        new_sbp.add_boxes(box)
+        h2_result = ds.H2(new_sbp.boxList, new_p.bin, optimized=optimized)
+        if len(h2_result) == 1:
+            new_p.M[i] = h2_result[0]
+            add_optimal_solution(optimal_solutions, h2_result[0].placement_best_solution)
+            return new_p, []
+        single_bin_result = new_sbp.fillBin(optimized=optimized)
+        if single_bin_result == []:
+            add_optimal_solution(optimal_solutions, new_sbp.placement_best_solution)
+        else:
+            insert_lower_bound(lower_bounds, current_problem.M[i].boxList + single_bin_result)
+        return new_p, single_bin_result
+    else:
+        new_p = current_problem.__copy__()
+        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+        new_p.boxList = new_not_placed_boxes
+        new_sbp = new_p.M[i]
+        new_sbp.boxList = optimal_placement.placement
+        new_sbp.placement_best_solution = optimal_placement.placement
+        #print "soluzione ottima riutilizzata"
+        return new_p, []
