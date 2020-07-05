@@ -134,7 +134,7 @@ class IDSearchMinMaxConstraints:
         self.max_depth = self.first_problem.get_l2_bound(self.first_problem.boxList)
         self.lower_bounds = []
         self.optimal_solutions = []
-        self.max_nodes = 300
+        self.max_nodes = 200
         self.node_count = 0
 
     def inizialize_problem_depth(self, max_depth):
