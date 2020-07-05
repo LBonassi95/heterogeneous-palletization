@@ -146,7 +146,7 @@ class IDSearchMinMaxConstraints:
         return problem_copy
 
     def search_id(self):
-        max_depth = self.max_depth + 1
+        max_depth = self.max_depth
         problem = self.inizialize_problem_depth(max_depth)
         res = self.backtracking_search_optimized_id_min_max(problem)
         while res == 'fail':
