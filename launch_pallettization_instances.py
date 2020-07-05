@@ -22,14 +22,16 @@ def execute_test(box_list, bin, i):
     for c in categories:
         card_cat = len([box for box in box_list if box.itemName == c])
         SPLIT = SPLIT + str(float(card_cat)/float(len(box_list))) + ":"
-    model = ds.PalletizationModel(bin, box_list)
+
+    #min_item_dict = {'item1': int(1+i/3), 'item2': int(1+i/3), 'item3': int(1+i/3)}
+    #max_item_dict = {'item1': int(4+i/2), 'item2': int(4+i/2), 'item3': int(4+i/2)}
+    model = ds.PalletizationModel(bin, box_list, minDict={}, maxDict={})
 
     #iterative deepening
     start_time = time.time()
-    s = searches.SearchAnyTime(model)
+    s = searches.IDSearchMinMaxConstraints(model)
     TIME_FIRST_SOLUTION = time.time() - start_time
-    FIRST_SOLUTION = s.Z
-    s = searches.IDSearch(model)
+    FIRST_SOLUTION = len(ds.H2(box_list, bin, optimized=True))
     start_time_id = time.time()
     res = s.search_id()
     TIME_OPTIMAL_SOLUTION = time.time() - start_time_id
@@ -39,20 +41,18 @@ def execute_test(box_list, bin, i):
                                     TIME_FIRST_SOLUTION, SOLUTION, TIME_OPTIMAL_SOLUTION))
     results.close()
 
-    # AnyTime
-    model = ds.PalletizationModel(bin, box_list)
-
-    s = searches.SearchAnyTime(model)
-    start_time_any = time.time()
-    res = s.search()
-    TIME_OPTIMAL_SOLUTION = time.time() - start_time_any
-    SOLUTION = len(res.M)
-    results = open("./Test/results.csv", 'a', 0)
-    results.write(csv_format.format(INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, "ANY", "/",
-                                    "/", SOLUTION, TIME_OPTIMAL_SOLUTION))
-    results.close()
-
-
+    # # AnyTime
+    # model = ds.PalletizationModel(bin, box_list)
+    #
+    # s = searches.SearchAnyTime(model)
+    # start_time_any = time.time()
+    # res = s.search()
+    # TIME_OPTIMAL_SOLUTION = time.time() - start_time_any
+    # SOLUTION = len(res.M)
+    # results = open("./Test/results.csv", 'a', 0)
+    # results.write(csv_format.format(INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, "ANY", "/",
+    #                                 "/", SOLUTION, TIME_OPTIMAL_SOLUTION))
+    # results.close()
 
 def getBoxes(j):
     box_list1 = [ds.Box(3, 5, 2) for i in range(1 + j)]
@@ -80,8 +80,8 @@ def main():
     results = open("./Test/results.csv", 'a', 0)
     results.write("INSTANCE,TOT_BOXES,NUM_CATEGORIES,SPLIT,STRATEGY,H2_SOLUTION,TIME_H2_SOLUTION,SOLUTION,TIME_SOLUTION\n")
     results.close()
-    bin = ds.Bin(20, 20, 20)
-    for i in range(1):
+    bin = ds.Bin(6, 7, 6)
+    for i in range(50):
         box_list = getBoxes(i)
         execute_test(box_list, bin, i)
         print "test fatto"
