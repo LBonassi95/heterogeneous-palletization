@@ -1,4 +1,5 @@
 # coding=utf-8
+import multiprocessing
 from unittest import TestCase
 import Data_Structures as ds
 import random
@@ -639,30 +640,68 @@ class TestPalletizationModel(TestCase):
         box_list = box_list1 + box_list2 + box_list3
         for i in range(len(box_list)):
             box_list[i].id = i
-        min_item_dict = {'item1': 1, 'item2': 1, 'item3': 1}
-        max_item_dict = {'item1': 4, 'item2': 4, 'item3': 4}
-        s = searches.IDSearchMinMaxConstraints(ds.PalletizationModel(bin,
-                                                                     box_list, minDict=min_item_dict, maxDict=max_item_dict))
-        res = s.search_id()
-        tot_boxes = []
-        self.assertEqual(True, res.check_item_count())
-        for m in res.M:
-            for box in m.placement_best_solution:
-                tot_boxes.append(box)
-        self.assertEqual(len(tot_boxes), 30)
-        for m in res.M:
-            others = [m2 for m2 in res.M if m2 != m]
-            other_boxes_id = []
-            for m2 in others:
-                for box2 in m2.placement_best_solution:
-                    other_boxes_id.append(box2.id)
-            for box in m.placement_best_solution:
-                # if box.id in other_boxes_id:
-                #     self.fail()
-                if box.position == ds.Point3D(-1, -1, -1):
-                    self.fail()
-        print len(res.M)
-        self.assertEqual(True, True)
+        # min_item_dict = {'item1': 1, 'item2': 1, 'item3': 1}
+        # max_item_dict = {'item1': 4, 'item2': 4, 'item3': 4}
+        # s = searches.IDSearchMinMaxConstraints(ds.PalletizationModel(bin,
+        #                                                              box_list, minDict=min_item_dict, maxDict=max_item_dict))
+        # res = s.search_id()
+        # tot_boxes = []
+        # self.assertEqual(True, res.check_item_count())
+        # for m in res.M:
+        #     for box in m.placement_best_solution:
+        #         tot_boxes.append(box)
+        # self.assertEqual(len(tot_boxes), 30)
+        # for m in res.M:
+        #     others = [m2 for m2 in res.M if m2 != m]
+        #     other_boxes_id = []
+        #     for m2 in others:
+        #         for box2 in m2.placement_best_solution:
+        #             other_boxes_id.append(box2.id)
+        #     for box in m.placement_best_solution:
+        #         if box.id in other_boxes_id:
+        #             self.fail()
+        #         if box.position == ds.Point3D(-1, -1, -1):
+        #             self.fail()
+        # print len(res.M)
+        # self.assertEqual(True, True)
+
+        manager = multiprocessing.Manager()
+        bin = ds.Bin(7, 7, 7)
+        return_values = manager.dict()
+        jobs = []
+        NUM_PROCESSES = 3
+        for index in range(NUM_PROCESSES):
+            model = ds.PalletizationModel(bin, box_list, minDict={}, maxDict={})
+            s = searches.IDSearchMinMaxConstraints(model, optimal=False)
+            s.max_depth += 1
+            p = multiprocessing.Process(target=s.search_id_multi, args=(index, return_values))
+            jobs.append(p)
+            p.start()
+        for process in jobs:
+            process.join()
+
+        print('Analisi dei risultatiiiii: \n')
+        for result in return_values.keys():
+            res = return_values.values()[result]
+            tot_boxes = []
+            for m in res.M:
+                for box in m.placement_best_solution:
+                    tot_boxes.append(box)
+            self.assertEqual(len(tot_boxes), 30)
+            for m in res.M:
+                others = [m2 for m2 in res.M if m2 != m]
+                other_boxes_id = []
+                for m2 in others:
+                    for box2 in m2.placement_best_solution:
+                        other_boxes_id.append(box2.id)
+                for box in m.placement_best_solution:
+                    if box.id in other_boxes_id:
+                        self.fail()
+                    if box.position == ds.Point3D(-1, -1, -1):
+                        self.fail()
+            print len(res.M)
+            self.assertEqual(True, True)
+
 
 
     def test_lower_feasibility(self):

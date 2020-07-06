@@ -1,4 +1,5 @@
 import time
+import random
 
 import Data_Structures as ds
 
@@ -16,7 +17,7 @@ def assign_box_to_new_bin(box, current_problem, not_placed_boxes, optimized=Fals
     return new_p
 
 
-def assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=False):
+def assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimal = True, nodes = 5000, optimized=False):
     new_p = current_problem.__copy__()
     new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
     new_p.boxList = new_not_placed_boxes
@@ -26,9 +27,10 @@ def assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=False
     if len(h2_result) == 1:
         new_p.M[i] = h2_result[0]
         return new_p, []
-    new_sbp.max_nodes = 100
-    new_sbp.m_cut = True
-    new_sbp.m = 1
+    if not optimal:
+        new_sbp.max_nodes = nodes
+        new_sbp.m_cut = True
+        new_sbp.m = 1
     single_bin_result = new_sbp.fillBin(optimized=optimized)
     return new_p, single_bin_result
 
@@ -93,48 +95,52 @@ def get_soluzione_ottima(bs, optimal_solutions):
     return None
 
 
-def assign_box_to_bin_v2(box, current_problem, i, not_placed_boxes, optimal_solutions, lower_bounds, optimized=True):
-    to_place = [box] + current_problem.M[i].boxList
-    bs = ds.BoxSet(to_place)
-    optimal_placement = get_soluzione_ottima(bs, optimal_solutions)
-    if optimal_placement is None:
-        new_p = current_problem.__copy__()
-        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
-        new_p.boxList = new_not_placed_boxes
-        new_sbp = new_p.M[i]
-        new_sbp.add_boxes(box)
-        h2_result = ds.H2(new_sbp.boxList, new_p.bin, optimized=optimized)
-        if len(h2_result) == 1:
-            new_p.M[i] = h2_result[0]
-            add_optimal_solution(optimal_solutions, h2_result[0].placement_best_solution)
-            return new_p, []
-        #print "sto usando fill bin"
-        single_bin_result = new_sbp.fillBin(optimized=optimized)
-        if single_bin_result == []:
-            add_optimal_solution(optimal_solutions, new_sbp.placement_best_solution)
-        else:
-            insert_lower_bound(lower_bounds, current_problem.M[i].boxList + single_bin_result)
-        return new_p, single_bin_result
-    else:
-        new_p = current_problem.__copy__()
-        new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
-        new_p.boxList = new_not_placed_boxes
-        new_sbp = new_p.M[i]
-        new_sbp.boxList = optimal_placement.placement
-        new_sbp.placement_best_solution = optimal_placement.placement
-        #print "soluzione ottima riutilizzata"
-        return new_p, []
+# def assign_box_to_bin_v2(box, current_problem, i, not_placed_boxes, optimal_solutions, lower_bounds, optimized=True):
+#     to_place = [box] + current_problem.M[i].boxList
+#     bs = ds.BoxSet(to_place)
+#     optimal_placement = get_soluzione_ottima(bs, optimal_solutions)
+#     if optimal_placement is None:
+#         new_p = current_problem.__copy__()
+#         new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+#         new_p.boxList = new_not_placed_boxes
+#         new_sbp = new_p.M[i]
+#         new_sbp.add_boxes(box)
+#         h2_result = ds.H2(new_sbp.boxList, new_p.bin, optimized=optimized)
+#         if len(h2_result) == 1:
+#             new_p.M[i] = h2_result[0]
+#             add_optimal_solution(optimal_solutions, h2_result[0].placement_best_solution)
+#             return new_p, []
+#         #print "sto usando fill bin"
+#         single_bin_result = new_sbp.fillBin(optimized=optimized)
+#         if single_bin_result == []:
+#             add_optimal_solution(optimal_solutions, new_sbp.placement_best_solution)
+#         else:
+#             insert_lower_bound(lower_bounds, current_problem.M[i].boxList + single_bin_result)
+#         return new_p, single_bin_result
+#     else:
+#         new_p = current_problem.__copy__()
+#         new_not_placed_boxes = [b for b in not_placed_boxes[1:]]
+#         new_p.boxList = new_not_placed_boxes
+#         new_sbp = new_p.M[i]
+#         new_sbp.boxList = optimal_placement.placement
+#         new_sbp.placement_best_solution = optimal_placement.placement
+#         #print "soluzione ottima riutilizzata"
+#         return new_p, []
 
 
 class IDSearchMinMaxConstraints:
 
-    def __init__(self, first_problem):
+    def __init__(self, first_problem, optimal=True):
         self.first_problem = first_problem
-        self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
+        self.optimal = optimal
+        if not optimal:
+            random.shuffle(first_problem.boxList)
+        else:
+            self.first_problem.boxList = sorted(self.first_problem.boxList, key=lambda box: box.get_volume(), reverse=True)
         self.max_depth = self.first_problem.get_l2_bound(self.first_problem.boxList)
         self.lower_bounds = []
         self.optimal_solutions = []
-        self.max_nodes = 200
+        self.max_nodes = int(len(self.first_problem.boxList) * 2)
         self.node_count = 0
 
     def inizialize_problem_depth(self, max_depth):
@@ -158,8 +164,21 @@ class IDSearchMinMaxConstraints:
                 return 'fail'
         return res
 
+    def search_id_multi(self, index, risultato):
+        max_depth = self.max_depth
+        problem = self.inizialize_problem_depth(max_depth)
+        res = self.backtracking_search_optimized_id_min_max(problem)
+        while res == 'fail':
+            max_depth += 1
+            print "aumento"
+            problem = self.inizialize_problem_depth(max_depth)
+            res = self.backtracking_search_optimized_id_min_max(problem)
+            if self.max_depth >= len(self.first_problem.boxList):
+                return 'fail'
+        risultato[index] = res
+
     def backtracking_search_optimized_id_min_max(self, current_problem):
-        if self.node_count < self.max_nodes:
+        if self.node_count < self.max_nodes or self.optimal:
             not_placed_boxes = current_problem.boxList
             if not_placed_boxes == []:
                 if current_problem.check_item_count():
@@ -172,7 +191,13 @@ class IDSearchMinMaxConstraints:
                     if backtracking_condition(current_problem, i, box) \
                             and current_problem.check_item_upper() \
                             and check_min_bound_feasibility(current_problem, not_placed_boxes):
-                        new_p, single_bin_result = assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimized=True)
+                        new_p, single_bin_result = assign_box_to_bin(box,
+                                                                     current_problem,
+                                                                     i,
+                                                                     not_placed_boxes,
+                                                                     nodes=self.max_nodes,
+                                                                     optimal=self.optimal,
+                                                                     optimized=True)
                         if single_bin_result == []:
                             self.node_count += 1
                             #print self.node_count

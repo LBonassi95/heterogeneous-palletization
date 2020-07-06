@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     return_values = manager.dict() #  CREO LA STRUTTURA DATI CONDIVISA TRA TUTTI I PRCCESSI
     jobs = [] # LISTA DI PROCESSI CHE LANCIO
-    NUM_PROCESSES = 1000
+    NUM_PROCESSES = 3
 
     for index in range(NUM_PROCESSES):
         # target e' la funzione da chiamare nel processo, args sono i suoi argomenti in ordine.

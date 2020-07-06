@@ -6,6 +6,8 @@ import datetime
 import Data_Structures as ds
 import time
 import searches
+import multiprocessing
+
 
 csv_format = "{},{},{},{},{},{},{},{},{}\n"
 
@@ -76,15 +78,38 @@ def getBoxes(j):
     return box_list
 
 
+def execute_test_multi(box_list):
+    manager = multiprocessing.Manager()
+    bin = ds.Bin(5, 7, 5)
+    return_values = manager.dict()
+    jobs = []
+    NUM_PROCESSES = 3
+    for index in range(NUM_PROCESSES):
+        model = ds.PalletizationModel(bin, box_list, minDict={}, maxDict={})
+        s = searches.IDSearchMinMaxConstraints(model, optimal=False)
+        p = multiprocessing.Process(target=s.search_id_multi, args=(index, return_values))
+        jobs.append(p)
+        p.start()
+    for process in jobs:
+        process.join()
+
+    print('Analisi dei risultatiiiii: \n')
+    for result in return_values.keys():
+        print(len(return_values.values()[result].M))
+    print('finitoooo')
+    print len(ds.H2(box_list, bin, m_cut=True, m=4, max_nodes=5000, optimized=True))
+
+
 def main():
-    results = open("./Test/results.csv", 'a', 0)
-    results.write("INSTANCE,TOT_BOXES,NUM_CATEGORIES,SPLIT,STRATEGY,H2_SOLUTION,TIME_H2_SOLUTION,SOLUTION,TIME_SOLUTION\n")
-    results.close()
-    bin = ds.Bin(6, 7, 6)
-    for i in range(50):
-        box_list = getBoxes(i)
-        execute_test(box_list, bin, i)
-        print "test fatto"
+    # results = open("./Test/results.csv", 'a', 0)
+    # results.write("INSTANCE,TOT_BOXES,NUM_CATEGORIES,SPLIT,STRATEGY,H2_SOLUTION,TIME_H2_SOLUTION,SOLUTION,TIME_SOLUTION\n")
+    # results.close()
+    # bin = ds.Bin(10, 10, 10)
+    # for i in range(50):
+    #     box_list = getBoxes(i)
+    #     execute_test(box_list, bin, i)
+    #     print "test fatto"
+    execute_test_multi(getBoxes(50))
 
 
 if __name__ == '__main__':
