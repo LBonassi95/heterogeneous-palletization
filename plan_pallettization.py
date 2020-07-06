@@ -19,7 +19,7 @@ def save_result(res):
         dict[bin_name]["left_volume"] = sb.get_left_volume()
         dict[bin_name]["bin_weight"] = sb.get_achieved_weight()
         x, y, z = sb.get_left_space()
-        dict[bin_name]["left_x_y_z_space"] = (x, y, z)
+        dict[bin_name]["effective_width_height_depth"] = (x, y, z)
 
     with open('result.json', 'w') as fp:
         json.dump(dict, fp, indent=1)

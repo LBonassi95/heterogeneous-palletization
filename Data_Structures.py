@@ -742,7 +742,7 @@ class SingleBinProblem:
                 y = box.get_end_y()
             if box.get_end_z > z:
                 z = box.get_end_z()
-        return (self.bin.width - x), (self.bin.height - y), (self.bin.depth - z)
+        return x, y, z
 
 
 
