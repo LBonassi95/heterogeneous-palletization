@@ -221,7 +221,10 @@ class PalletizationModel:
         return l1_w_h, l1_w_d, l1_h_d, l1
 
     def get_l1_p_max(self, value_list, v1, v2, v3):
-        return max([self.get_l1_p(p, value_list, v1, v2, v3) for p in range(1, int(np.ceil(v3 / 2)) + 1)])
+        arr = [self.get_l1_p(p, value_list, v1, v2, v3) for p in range(1, int(np.ceil(v3 / 2)) + 1)]
+        if not arr:
+            return 0
+        return max(arr)
 
     def get_l1_p(self, p, value_list, v1, v2, v3):
         j_set = [box for box in value_list if (box[0] > v1 / 2) and (box[1] > v2 / 2)]
@@ -721,6 +724,25 @@ class SingleBinProblem:
     def check_pallet_weight(self, boxes):
         weight_pallet = sum([b.weight for b in boxes])
         return weight_pallet <= self.bin.maxWeight
+
+    def get_left_volume(self):
+        return self.bin.volume - sum([box.get_volume() for box in self.placement_best_solution])
+
+    def get_achieved_weight(self):
+        return sum([box.get_weight() for box in self.placement_best_solution])
+
+    def get_left_space(self):
+        x = 0
+        y = 0
+        z = 0
+        for box in self.placement_best_solution:
+            if box.get_end_x > x:
+                x = box.get_end_x()
+            if box.get_end_y > y:
+                y = box.get_end_y()
+            if box.get_end_z > z:
+                z = box.get_end_z()
+        return (self.bin.width - x), (self.bin.height - y), (self.bin.depth - z)
 
 
 
