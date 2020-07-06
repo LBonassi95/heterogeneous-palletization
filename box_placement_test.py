@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 ## Cobotta robot demo for UNIBS class
-
+import multiprocessing
 import sys
 import rospy
 from std_msgs.msg import Int32
@@ -12,7 +12,8 @@ import geometry_msgs.msg
 from math import pi
 import Data_Structures as ds
 import test_palletizationModel
-
+import searches
+import XmlParser
 
 class vs060Robot(object):
     def __init__(self):
@@ -20,7 +21,6 @@ class vs060Robot(object):
 
         robot = moveit_commander.RobotCommander(ns="vs060")
         # robot = moveit_commander.RobotCommander(ns="vs060")
-
         # Instantiate a `PlanningSceneInterface`_ object.  This object is an interface
         # to the world surrounding the robot:
         scene = moveit_commander.PlanningSceneInterface()
@@ -244,8 +244,8 @@ def place_boxes(vs060, boxList, offset_x):
     # for box in boxList:
     #     vs060.detach_box(str(i))
     #     i += 1
-    scale_factor = 100
-    eps = 0.005
+    scale_factor = 30
+    eps = 0.01
     #offset_x = 0
 
     for box in boxList:
@@ -267,40 +267,65 @@ if __name__ == '__main__':
         moveit_commander.roscpp_initialize(sys.argv)
         rospy.init_node('vs060_node', anonymous=True)
         vs060 = vs060Robot()
-
-        #CONFIGURAZIONE CON BUG
-        # bin = ds.Bin(10, 50, 10)
-        # box_list = test_palletizationModel.get_random_box_list_with_weight(10)
-        # sb = ds.SingleBinProblem(bin)
-        # sb.boxList = box_list
-        # #res = sb.branch_and_bound_filling_iter()
-        # res = sb.fillBin()
-        #
-        # boxes = []
-        # for (box, position) in sb.placement_best_solution:
-        #     box.position = position
-        #     boxes.append(box)
-        #
-        #
-        # place_boxes(vs060, boxes, 1)
-
-        bin = ds.Bin(25, 20, 20)
-        box_list1 = [ds.Box(2, 3, 4) for i in range(50)]
+        box_list1 = [ds.Box(3, 5, 2) for i in range(10)]
+        box_list2 = [ds.Box(2, 2, 2) for i in range(10)]
+        box_list3 = [ds.Box(2, 2, 4) for i in range(10)]
         for box in box_list1:
-            box.itemName = "item1"
-        box_list2 = [ds.Box(4, 5, 2) for i in range(20)]
+            box.itemName = 'item1'
+            box.weight = 10
+            box.maximumWeight = 10
         for box in box_list2:
-            box.itemName = "item2"
-        box_list3 = [ds.Box(6, 2, 3) for i in range(25)]
+            box.itemName = 'item2'
+            box.weight = 5
+            box.maximumWeight = 5
         for box in box_list3:
-            box.itemName = "item3"
+            box.itemName = 'item3'
+            box.weight = 4
+            box.maximumWeight = 4
         box_list = box_list1 + box_list2 + box_list3
-        sb = ds.SingleBinProblem(bin)
-        sb.boxList = box_list
+        for i in range(len(box_list)):
+            box_list[i].id = i
+        manager = multiprocessing.Manager()
+        bin = ds.Bin(7, 7, 7)
+        return_values = manager.dict()
+        jobs = []
+        NUM_PROCESSES = 3
+        for index in range(NUM_PROCESSES):
+            model = ds.PalletizationModel(bin, box_list, minDict={}, maxDict={})
+            s = searches.IDSearchMinMaxConstraints(model, optimal=False)
+            s.max_depth += 1
+            p = multiprocessing.Process(target=s.search_id_multi, args=(index, return_values))
+            jobs.append(p)
+            p.start()
+        for process in jobs:
+            process.join()
 
-        res = sb.fillBin(optimized=True)
-        boxes = []
-        place_boxes(vs060, sb.placement_best_solution, 2)
+        for result in return_values.keys():
+            res = return_values.values()[result]
+        res = return_values.values()[0]
+
+        offeset = 0.5
+        for m in res.M:
+            place_boxes(vs060, m.placement_best_solution, offeset)
+            offeset += 0.5
+        print len(res.M)
+
+        # rospy.sleep(0.01)
+        # box_pose = geometry_msgs.msg.PoseStamped()
+        # box_pose.header.frame_id = vs060.planning_frame
+        # box_pose.pose.position.x = -1
+        # box_pose.pose.position.z = 0
+        # box_pose.pose.position.y = -1
+        # vs060.scene.add_box(str(vs060.box_counter), box_pose,
+        #                     size=(8.0 / 30.0, 8.0 / 30.0,
+        #                           8.0 / 30.0))
+        #
+        # print 'scatola piazzata' + str(vs060.box_counter)
+        #
+        #
+        #
+        #
+        # print 'scatola piazzata' + str(vs060.box_counter)
 
 
     except rospy.ROSInterruptException:
