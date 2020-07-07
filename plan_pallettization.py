@@ -15,7 +15,7 @@ def save_result(res):
         dict[bin_name] = {}
         dict[bin_name]["box_list"] = []
         for box in sb.placement_best_solution:
-            dict[bin_name]["box_list"].append((box.itemName, box.position.x, box.position.y, box.position.z))
+            dict[bin_name]["box_list"].append((box.itemName, box.width, box.height, box.depth, box.position.x, box.position.y, box.position.z))
         dict[bin_name]["left_volume"] = sb.get_left_volume()
         dict[bin_name]["bin_weight"] = sb.get_achieved_weight()
         x, y, z = sb.get_left_space()
@@ -39,9 +39,15 @@ def main(argv):
 
     problem = XmlParser.xml2problem(path)
 
-    res = execute_test_multi(problem, optimal)
+    if not optimal:
+        res = execute_test_multi(problem, optimal)
+    else:
+        res = execute_test_optimal(problem, optimal)
 
     save_result(res)
+
+    with open('./result.json') as json_file:
+        data = json.load(json_file)
 
 
 def execute_test_multi(problem, optimal):
@@ -65,6 +71,13 @@ def execute_test_multi(problem, optimal):
             best_res = return_values.values()[result].M
     return best_res
 
+
+def execute_test_optimal(problem, optimal):
+
+    s = searches.IDSearchMinMaxConstraints(problem, optimal=optimal)
+    res = s.search_id()
+
+    return res.M
 
 
 if __name__ == "__main__":
