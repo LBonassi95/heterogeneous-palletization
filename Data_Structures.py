@@ -565,7 +565,7 @@ class SingleBinProblem:
                 area += box.get_overlapping_area(box2)
             tot_area = box.width * box.depth
             perc_area = area/tot_area
-            if perc_area > 0.5:
+            if perc_area > 0.7:
                 return True
             else:
                 if DEBUG:
@@ -598,12 +598,15 @@ class SingleBinProblem:
             result = self.branch_and_bound_filling_optimized([], self.boxList)
         else:
             result = self.branch_and_bound_filling([], self.boxList)
-        if result == True:
+
+        if result:
             return []
+
         placed_boxes = [box for box in self.placement_best_solution]
         not_placed_boxes = self.not_placed_boxes
         self.boxList = placed_boxes
         self.not_placed_boxes = []
+
         return not_placed_boxes
 
 
@@ -674,9 +677,8 @@ class SingleBinProblem:
                 box_dict[box.itemName] = box
         possible_boxes = [box_dict[key] for key in box_dict.keys()]
         possible_boxes = sorted(possible_boxes, key=lambda box: box.maximumWeight, reverse=True)
+
         return [(p, box) for box in possible_boxes for p in points]
-
-
 
     def branch_and_bound_filling_optimized(self, placed_boxes, not_placed_boxes):
         if len(not_placed_boxes) == 0:
@@ -688,6 +690,7 @@ class SingleBinProblem:
 
         if not self.check_backtrack_condition(placed_boxes, VI):
             return False
+
         self.node_count += 1
 
         # TODO euristica nell'ordinamento delle scatole
@@ -711,6 +714,7 @@ class SingleBinProblem:
 
                 new_placed_boxes = [b for b in placed_boxes] + [box]
                 new_not_placed_boxes = [b for b in not_placed_boxes if not b == box]
+
                 if self.m_cut and self.node_count > self.max_nodes:
                     return False
                 elif self.branch_and_bound_filling_optimized(new_placed_boxes, new_not_placed_boxes):
@@ -718,6 +722,7 @@ class SingleBinProblem:
 
             # ripristino la scatola, in quanto ho fallito
             box.position = NOT_PLACED_POINT
+
         self.update_best_filling(placed_boxes)
         return False
 

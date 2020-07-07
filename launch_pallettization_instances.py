@@ -66,6 +66,7 @@ def getBoxes(j):
     box_list1 = [ds.Box(3, 5, 2) for i in range(1 + j)]
     box_list2 = [ds.Box(2, 2, 2) for i in range(1 + j)]
     box_list3 = [ds.Box(2, 2, 4) for i in range(1 + j)]
+
     for box in box_list1:
         box.itemName = 'item1'
         box.weight = 10
