@@ -170,7 +170,7 @@ class IDSearchMinMaxConstraints:
         res = self.backtracking_search_optimized_id_min_max(problem)
         while res == 'fail':
             self.max_depth += 1
-            #self.max_nodes = self.max_nodes * 2
+            self.max_nodes = self.max_nodes * 2
             f, problem = self.initialize_min_constraints()
             if not f:
                 return 'fail'
