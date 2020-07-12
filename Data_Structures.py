@@ -344,6 +344,22 @@ class PalletizationModel:
                         lower_violations.add(sb)
         return lower_violations
 
+    def fill_min_bin(self):
+        for key in self.minDict:
+            box_item = [box for box in self.boxList if box.itemName == key]
+            if len(box_item) < self.minDict[key]*len(self.M):
+                return False
+            for m in self.M:
+                to_add = box_item[:self.minDict[key]]
+                m.add_boxes(to_add)
+                res = m.fillBin(optimized=True)
+                if res != []:
+                    return False
+                for added in to_add:
+                    box_item.remove(added)
+                    self.boxList.remove(added)
+        return True
+
 
 class SingleBinProblem:
 
