@@ -31,9 +31,9 @@ def assign_box_to_bin(box, current_problem, i, not_placed_boxes, optimal=True, n
         single_bin_result = new_sbp.fillBin(optimized=optimized)
         return new_p, single_bin_result
     else:
-        new_sbp.max_nodes = nodes
+        new_sbp.max_nodes = 5000
         new_sbp.m_cut = True
-        new_sbp.m = 1
+        new_sbp.m = 4
         single_bin_result = new_sbp.fillBin(optimized=optimized)
         return new_p, single_bin_result
 
@@ -185,6 +185,7 @@ class IDSearchMinMaxConstraints:
             risultato[index] = 'fail'
         res = self.backtracking_search_optimized_id_min_max(problem)
         while res == 'fail':
+            print "aumento"
             self.max_depth += 1
             self.max_nodes = self.max_nodes * 2
             f, problem = self.initialize_min_constraints()
@@ -196,7 +197,6 @@ class IDSearchMinMaxConstraints:
                 risultato[index] = 'fail'
                 return
         risultato[index] = res
-
 
     def backtracking_search_optimized_id_min_max(self, current_problem):
         if self.node_count < self.max_nodes or self.optimal:
@@ -221,7 +221,7 @@ class IDSearchMinMaxConstraints:
                                                                      optimized=True)
                         if single_bin_result == []:
                             self.node_count += 1
-                            #print self.node_count
+                            print self.node_count
                             result = self.backtracking_search_optimized_id_min_max(new_p)
                             if result != "fail":
                                 return result
