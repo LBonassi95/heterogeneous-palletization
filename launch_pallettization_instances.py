@@ -24,8 +24,8 @@ def execute_test(box_list, bin, i):
         card_cat = len([box for box in box_list if box.itemName == c])
         SPLIT = SPLIT + str(float(card_cat)/float(len(box_list))) + ":"
 
-    min_item_dict = {'item2': 1, 'item3': 1, 'item5': 2}
-    #max_item_dict = {'item3': int(4+i/2)}
+    min_item_dict = {'item2': 2, 'item3': 2, 'item5': 2}
+    max_item_dict = {'item5': 6}
 
     manager = multiprocessing.Manager()
     return_values = manager.dict()
@@ -33,8 +33,8 @@ def execute_test(box_list, bin, i):
     NUM_PROCESSES = 1
     start_time_id = time.time()
     for index in range(NUM_PROCESSES):
-        model = ds.PalletizationModel(bin, box_list, minDict=min_item_dict, maxDict={})
-        s = searches.IDSearchMinMaxConstraints(model, optimal=False)
+        model = ds.PalletizationModel(bin, box_list, minDict={}, maxDict={})
+        s = searches.IDSearchMinMaxConstraints(model, optimal=True)
         p = multiprocessing.Process(target=s.search_id_multi, args=(index, return_values))
         jobs.append(p)
         p.start()
@@ -58,18 +58,18 @@ def execute_test(box_list, bin, i):
         SOLUTION = len(best_res)
     else:
         SOLUTION = '-1'
-    results = open("./Test/results.csv", 'a', 0)
+    results = open("./Test/results_opt_one.csv", 'a', 0)
     results.write(csv_format.format(INSTANCE, TOT_BOXES, NUM_CATEGORIES, SPLIT, "ID", FIRST_SOLUTION,
                                     TIME_FIRST_SOLUTION, SOLUTION, TIME_OPTIMAL_SOLUTION))
     results.close()
 
 
 def getBoxes(j):
-    box_list1 = [ds.Box(1, 4, 1) for i in range(2 + j*2)]
-    box_list2 = [ds.Box(2, 3, 2) for i in range(2 + j*2)]
-    box_list3 = [ds.Box(5, 1, 4) for i in range(2 + j*2)]
-    box_list4 = [ds.Box(1, 4, 4) for i in range(2 + j*2)]
-    box_list5 = [ds.Box(1, 1, 1) for i in range(2 * (2 + j*2))]
+    box_list1 = [ds.Box(1, 4, 1) for i in range(4)]
+    box_list2 = [ds.Box(2, 3, 2) for i in range(4)]
+    box_list3 = [ds.Box(5, 1, 4) for i in range(4)]
+    box_list4 = [ds.Box(1, 4, 4) for i in range(4)]
+    box_list5 = [ds.Box(1, 1, 1) for i in range(8)]
     for box in box_list1:
         box.itemName = 'item1'
         box.weight = 10
@@ -97,12 +97,12 @@ def getBoxes(j):
 
 
 def main():
-    results = open("./Test/results.csv", 'a', 0)
+    results = open("./Test/results_opt_one.csv", 'a', 0)
     results.write("INSTANCE,TOT_BOXES,NUM_CATEGORIES,SPLIT,STRATEGY,H2_SOLUTION,TIME_H2_SOLUTION,SOLUTION,TIME_SOLUTION\n")
     results.close()
-    bin = ds.Bin(7, 9, 7)
+    bin = ds.Bin(6, 7, 6)
     bin.set_maxWeight(50)
-    for i in range(50):
+    for i in range(1):
         box_list = getBoxes(i)
         execute_test(box_list, bin, i)
         print "test fatto"
