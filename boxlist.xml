@@ -1,61 +1,61 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <BoxList>
     <Bin>
-        <Width>1</Width>
-        <Height>2</Height>
-        <Depth>3</Depth>
+        <Width>7</Width>
+        <Height>7</Height>
+        <Depth>7</Depth>
         <MaximumWeight>5</MaximumWeight>
     </Bin>
 
     <Box>
         <Type>Box</Type>
-        <Width>0.02</Width>
-        <Height>0.03</Height>
-        <Depth>0.04</Depth>
+        <Width>2</Width>
+        <Height>3</Height>
+        <Depth>4</Depth>
         <ItemName>Item1</ItemName>
-        <Quantity>50</Quantity>
+        <Quantity>2</Quantity>
         <Weight>1</Weight>
         <MaxWeight>10000</MaxWeight>
 
         <MinQuantity>0</MinQuantity>
-        <MaxQuantity>1</MaxQuantity>
+        <MaxQuantity>4</MaxQuantity>
     </Box>
     <Box>
         <Type>Box</Type>
-        <Width>0.04</Width>
-        <Height>0.05</Height>
-        <Depth>0.02</Depth>
-        <ItemName>Item2</ItemName>
-        <Quantity>20</Quantity>
-        <Weight>1</Weight>
-        <MaxWeight>10000</MaxWeight>
-
-        <MinQuantity>0</MinQuantity>
-        <MaxQuantity>1</MaxQuantity>
-    </Box>
-    <Box>
-        <Type>Box</Type>
-        <Width>0.06</Width>
-        <Height>0.02</Height>
-        <Depth>0.03</Depth>
-        <ItemName>Item4</ItemName>
-        <Quantity>20</Quantity>
-        <Weight>1</Weight>
-        <MaxWeight>10000</MaxWeight>
-
-        <MinQuantity>0</MinQuantity>
-        <MaxQuantity>1</MaxQuantity>
-    </Box>
-    <Box>
-        <Type>Cylinder</Type>
-        <Radius>4</Radius>
+        <Width>4</Width>
         <Height>5</Height>
-        <ItemName>Item3</ItemName>
-        <Quantity>0</Quantity>
-        <Weight>15</Weight>
-        <MaxWeight>25</MaxWeight>
+        <Depth>2</Depth>
+        <ItemName>Item2</ItemName>
+        <Quantity>2</Quantity>
+        <Weight>1</Weight>
+        <MaxWeight>10000</MaxWeight>
+
+        <MinQuantity>3</MinQuantity>
+        <MaxQuantity>4</MaxQuantity>
+    </Box>
+    <Box>
+        <Type>Box</Type>
+        <Width>6</Width>
+        <Height>2</Height>
+        <Depth>3</Depth>
+        <ItemName>Item4</ItemName>
+        <Quantity>2</Quantity>
+        <Weight>1</Weight>
+        <MaxWeight>10000</MaxWeight>
 
         <MinQuantity>0</MinQuantity>
-        <MaxQuantity>1</MaxQuantity>
+        <MaxQuantity>4</MaxQuantity>
     </Box>
+    <!--<Box>-->
+        <!--<Type>Cylinder</Type>-->
+        <!--<Radius>4</Radius>-->
+        <!--<Height>5</Height>-->
+        <!--<ItemName>Item3</ItemName>-->
+        <!--<Quantity>0</Quantity>-->
+        <!--<Weight>15</Weight>-->
+        <!--<MaxWeight>25</MaxWeight>-->
+
+        <!--<MinQuantity>0</MinQuantity>-->
+        <!--<MaxQuantity>4</MaxQuantity>-->
+    <!--</Box>-->
 </BoxList>
