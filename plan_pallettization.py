@@ -26,16 +26,16 @@ def save_result(res):
 
 
 def main(argv):
-    opts, args = getopt.getopt(argv, "o:x:")
+    opts, args = getopt.getopt(argv, "n:x:")
 
-    optimal = False
+    optimal = True
     path = None
 
     for opt, arg in opts:
         if opt == "-x":
             path = arg
-        elif opt == "-o":
-            optimal = True
+        elif opt == "-n":
+            optimal = False
 
     problem = XmlParser.xml2problem(path)
 
@@ -44,10 +44,10 @@ def main(argv):
     else:
         res = execute_test_optimal(problem, optimal)
 
-    save_result(res)
-
-    with open('./result.json') as json_file:
-        data = json.load(json_file)
+    if res == None:
+        print 'soluzione non trovata'
+    else:
+        save_result(res)
 
 
 def execute_test_multi(problem, optimal):
@@ -67,7 +67,7 @@ def execute_test_multi(problem, optimal):
     best_res = None
     best_val = 1e10
     for result in return_values.keys():
-        if len(return_values.values()[result].M) < best_val:
+        if return_values.values()[result] != 'fail' and len(return_values.values()[result].M) < best_val:
             best_res = return_values.values()[result].M
     return best_res
 
@@ -76,6 +76,9 @@ def execute_test_optimal(problem, optimal):
 
     s = searches.IDSearchMinMaxConstraints(problem, optimal=optimal)
     res = s.search_id()
+
+    if res == 'fail':
+        return None
 
     return res.M
 
