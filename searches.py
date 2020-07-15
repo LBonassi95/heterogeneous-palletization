@@ -188,7 +188,7 @@ class IDSearchMinMaxConstraints:
             risultato[index] = 'fail'
         res = self.backtracking_search_optimized_id_min_max(problem)
         while res == 'fail':
-            print "aumento"
+            #print "aumento"
             self.max_depth += 1
             self.max_nodes = self.max_nodes * 2
             f, problem = self.initialize_min_constraints()
@@ -223,7 +223,7 @@ class IDSearchMinMaxConstraints:
                                                                      optimal=self.optimal,
                                                                      optimized=True)
                         if single_bin_result == []:
-                            self.node_count += 1
+                            #self.node_count += 1
                             print self.node_count
                             result = self.backtracking_search_optimized_id_min_max(new_p)
                             if result != "fail":
