@@ -9,6 +9,7 @@ import json
 
 def save_result(res):
     dict = {}
+
     for i in range(len(res)):
         sb = res[i]
         bin_name = "bin-"+str(i)

@@ -113,6 +113,7 @@ def assign_box_to_bin_v2(box, current_problem, i, not_placed_boxes, optimal_solu
             new_p.M[i] = h2_result[0]
             add_optimal_solution(optimal_solutions, h2_result[0].placement_best_solution)
             return new_p, []
+
         #print "sto usando fill bin"
         if not optimal:
             new_sbp.max_nodes = nodes

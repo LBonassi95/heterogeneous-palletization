@@ -284,6 +284,7 @@ class PalletizationModel:
         return l1_val + max(0, value)
 
     #ALGORITMO PER CERCARE DI CHIUDERE IL BIN i-ESIMO, VEDI Main Branching Tree sull'articolo
+
     def try_to_close(self, i, optimized=True):
         if DEBUG:
             print "sto provando a chiudere un bin"

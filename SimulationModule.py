@@ -16,6 +16,7 @@ import XmlParser as xmlparser
 import json
 
 # Per lanciare
+
     # roslaunch denso_robot_bringup vs060_bringup.launch
 
 class vs060Robot(object):

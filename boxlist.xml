@@ -20,6 +20,7 @@
         <MinQuantity>0</MinQuantity>
         <MaxQuantity>4</MaxQuantity>
     </Box>
+
     <Box>
         <Type>Box</Type>
         <Width>4</Width>
