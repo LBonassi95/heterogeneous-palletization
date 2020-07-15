@@ -191,6 +191,7 @@ class PalletizationModel:
     def __init__(self, bin, boxList, openBins=None, minDict={}, maxDict={}):
         if openBins is None:
             openBins = []
+
         self.boxList = boxList
         self.bin = bin
         self.M = openBins
@@ -772,6 +773,7 @@ def H2(box_set, bin, m_cut=True, m=4, max_nodes=5000, optimized=False):
     box_set = [box for box in box_set]
     box_set = sorted(box_set, key=lambda box: box.get_volume(), reverse=False)
     sb_list = []
+
     while box_set != []:
         sb = SingleBinProblem(bin)
         sb.add_boxes(box_set)

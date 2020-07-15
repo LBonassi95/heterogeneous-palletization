@@ -71,7 +71,7 @@ class vs060Robot(object):
         self.group_names = group_names
 
         ################ MOVE POSITIONS #####################
-        self.home_joint_values = [0, 0, pi / 2, 0, pi / 2, 0]
+        self.home_joint_values = [0, 0, 0, 0, 0, 0]
         #self.home_joint_values = self.origin.joint_state
         #self.home_joint_values = [0.00015346623907763757, -1.407011836317686, -0.9765591968036391, 3.141215559515132, 0.7577111499402598, -3.1405790212738296]
         # [0,0,0,0,quello prima dell'end effector,0]
@@ -100,11 +100,11 @@ class vs060Robot(object):
         self.approach_place_pose.position.y = 0.3
         self.approach_place_pose.position.z = 0.6
 
-        self.origin_point = geometry_msgs.msg.Pose()
-        self.origin_point.orientation.y = 1.0  # (0, 1, 0, 0)
-        self.origin_point.position.x = -0.4
-        self.origin_point.position.y = -0.3
-        self.origin_point.position.z = 0
+        self.bin_origin_point = geometry_msgs.msg.Pose()
+        self.bin_origin_point.orientation.y = 1.0  # (0, 1, 0, 0)
+        self.bin_origin_point.position.x = -0.4
+        self.bin_origin_point.position.y = -0.3
+        self.bin_origin_point.position.z = 0.05
 
         self.mid_point = geometry_msgs.msg.Pose()
         self.mid_point.orientation.y = 1.0  # (0, 1, 0, 0)
@@ -274,16 +274,16 @@ def place_boxes_planning(vs060, boxList, offset_x):
     for box in boxList:
 
 
-        vs060.approach_place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.origin_point.position.x
-        vs060.approach_place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.origin_point.position.y
+        vs060.approach_place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.bin_origin_point.position.x
+        vs060.approach_place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.bin_origin_point.position.y
         vs060.approach_place_pose.position.z = box.position.get_y() + box.get_height() + 0.1
 
         plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execute=True)
         if plan:
             print('[OK] approach pose')
 
-        vs060.place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.origin_point.position.x
-        vs060.place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.origin_point.position.y
+        vs060.place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.bin_origin_point.position.x
+        vs060.place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.bin_origin_point.position.y
         vs060.place_pose.position.z = box.position.get_y() + box.get_height()
         plan = vs060.go_to_pose_goal(vs060.place_pose, execute=True)
         if plan:
@@ -294,8 +294,8 @@ def place_boxes_planning(vs060, boxList, offset_x):
 
         box_pose = geometry_msgs.msg.PoseStamped()
         box_pose.header.frame_id = vs060.planning_frame
-        box_pose.pose.position.x = ((float(box.position.x) + (float(box.width) / 2)) / scale_factor) + vs060.origin_point.position.x
-        box_pose.pose.position.y = ((float(box.position.z) + (float(box.depth) / 2)) / scale_factor) + vs060.origin_point.position.y
+        box_pose.pose.position.x = ((float(box.position.x) + (float(box.width) / 2)) / scale_factor) + vs060.bin_origin_point.position.x
+        box_pose.pose.position.y = ((float(box.position.z) + (float(box.depth) / 2)) / scale_factor) + vs060.bin_origin_point.position.y
         box_pose.pose.position.z = ((float(box.position.y) + (float(box.height) / 2)) / scale_factor)
 
         vs060.scene.add_box(str(vs060.box_counter), box_pose,
@@ -325,9 +325,9 @@ def place_boxes(vs060, boxList, offset_x):
 
         box_pose = geometry_msgs.msg.PoseStamped()
         box_pose.header.frame_id = vs060.planning_frame
-        box_pose.pose.position.x = ((float(box.position.x) + (float(box.width) / 2)) / scale_factor) + vs060.origin_point.position.x + offset_x
+        box_pose.pose.position.x = ((float(box.position.x) + (float(box.width) / 2)) / scale_factor) + vs060.bin_origin_point.position.x + offset_x
         box_pose.pose.position.z = ((float(box.position.y) + (float(box.height) / 2)) / scale_factor)
-        box_pose.pose.position.y = ((float(box.position.z) + (float(box.depth) / 2)) / scale_factor) + vs060.origin_point.position.y
+        box_pose.pose.position.y = ((float(box.position.z) + (float(box.depth) / 2)) / scale_factor) + vs060.bin_origin_point.position.y
         vs060.scene.add_box(str(random()) + str(vs060.box_counter), box_pose,
                             size=((float(box.width) - eps) / scale_factor, (float(box.depth) - eps) / scale_factor,
                                   (float(box.height) - eps) / scale_factor))
@@ -346,14 +346,16 @@ def multipleBinsManagement():
         print('Sono andato in pick-pose')
         plan = vs060.go_to_joint_state(vs060.mid_point, execute=True)
         print('Sono andato in midpoint-pose')
-        plan = vs060.go_to_joint_state(vs060.origin_point, execute=True)
+        plan = vs060.go_to_joint_state(vs060.bin_origin_point, execute=True)
         print('Sono andato in origin-pose')
         plan = vs060.go_to_joint_state(vs060.mid_point, execute=True)
         print('Sono tornato in midpoint-pose')
+        plan = vs060.go_to_joint_state(vs060.home_joint_values, execute=True)
+        print('Sono andato in home')
         print('Ora parte il pick and place....')
 
         # [START] placing grafico delle scatole per vedere come dovranno venire
-        scale_factor = 25
+        scale_factor = 50
         eps = 0.005
         offset_x = 2
 
@@ -376,9 +378,9 @@ def multipleBinsManagement():
 
                     box_pose = geometry_msgs.msg.PoseStamped()
                     box_pose.header.frame_id = vs060.planning_frame
-                    box_pose.pose.position.x = ((float(box[4]) + (float(box[1]) / 2)) / scale_factor) + vs060.origin_point.position.x + offset_x
+                    box_pose.pose.position.x = ((float(box[4]) + (float(box[1]) / 2)) / scale_factor) + vs060.bin_origin_point.position.x + offset_x
                     box_pose.pose.position.z = ((float(box[5]) + (float(box[2]) / 2)) / scale_factor)
-                    box_pose.pose.position.y = ((float(box[6]) + (float(box[3]) / 2)) / scale_factor) + vs060.origin_point.position.y
+                    box_pose.pose.position.y = ((float(box[6]) + (float(box[3]) / 2)) / scale_factor) + vs060.bin_origin_point.position.y
 
                     vs060.scene.add_box(str(random()) + str(vs060.box_counter), box_pose,
                                         size=((float(box[1]) - eps) / scale_factor,
@@ -387,7 +389,7 @@ def multipleBinsManagement():
                     vs060.box_counter += 1
                     print 'scatola piazzata' + str(vs060.box_counter)
 
-                offset_x += 1
+                offset_x += 0.5
 
         # [END] placing grafico delle scatole per vedere come dovranno venire
 
@@ -455,16 +457,16 @@ def multipleBinsManagement():
                     if plan:
                         print('[OK] mid point')
 
-                    vs060.approach_place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.origin_point.position.x
-                    vs060.approach_place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.origin_point.position.y
+                    vs060.approach_place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.bin_origin_point.position.x
+                    vs060.approach_place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.bin_origin_point.position.y
                     vs060.approach_place_pose.position.z = box.position.get_y() + box.get_height() + 0.1
 
                     plan = vs060.go_to_pose_goal(vs060.approach_place_pose, execute=True)
                     if plan:
                         print('[OK] approach pose')
 
-                    vs060.place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.origin_point.position.x
-                    vs060.place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.origin_point.position.y
+                    vs060.place_pose.position.x = box.position.get_x() + box.get_width() / 2 + vs060.bin_origin_point.position.x
+                    vs060.place_pose.position.y = box.position.get_z() + box.get_depth() / 2 + vs060.bin_origin_point.position.y
                     vs060.place_pose.position.z = box.position.get_y() + box.get_height()
                     plan = vs060.go_to_pose_goal(vs060.place_pose, execute=True)
                     if plan:
@@ -507,6 +509,8 @@ def multipleBinsManagement():
                 print('=================================================================')
 
         # [END] placing effettivo delle scatole
+        plan = vs060.go_to_joint_state(vs060.home_joint_values, execute=True)
+        print('Sono andato home, ho finito.')
 
     except rospy.ROSInterruptException:
         pass
