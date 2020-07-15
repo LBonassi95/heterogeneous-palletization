@@ -6,7 +6,6 @@
         <Depth>3</Depth>
         <MaximumWeight>5</MaximumWeight>
     </Bin>
-
     <Box>
         <Type>Box</Type>
         <Width>0.02</Width>
@@ -16,6 +15,18 @@
         <Quantity>50</Quantity>
         <Weight>1</Weight>
         <MaxWeight>10000</MaxWeight>
+
+        <MinQuantity>0</MinQuantity>
+        <MaxQuantity>1</MaxQuantity>
+    </Box>
+    <Box>
+        <Type>Cylinder</Type>
+        <Radius>4</Radius>
+        <Height>5</Height>
+        <ItemName>Item3</ItemName>
+        <Quantity>0</Quantity>
+        <Weight>15</Weight>
+        <MaxWeight>25</MaxWeight>
 
         <MinQuantity>0</MinQuantity>
         <MaxQuantity>1</MaxQuantity>
@@ -46,16 +57,9 @@
         <MinQuantity>0</MinQuantity>
         <MaxQuantity>1</MaxQuantity>
     </Box>
-    <Box>
-        <Type>Cylinder</Type>
-        <Radius>4</Radius>
-        <Height>5</Height>
-        <ItemName>Item3</ItemName>
-        <Quantity>0</Quantity>
-        <Weight>15</Weight>
-        <MaxWeight>25</MaxWeight>
-
-        <MinQuantity>0</MinQuantity>
-        <MaxQuantity>1</MaxQuantity>
-    </Box>
 </BoxList>
+
+
+
+
+

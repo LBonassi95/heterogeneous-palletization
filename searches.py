@@ -168,6 +168,7 @@ class IDSearchMinMaxConstraints:
         if not f:
             return 'fail'
         res = self.backtracking_search_optimized_id_min_max(problem)
+
         while res == 'fail':
             self.max_depth += 1
             self.max_nodes = self.max_nodes * 2
@@ -175,6 +176,7 @@ class IDSearchMinMaxConstraints:
             if not f:
                 return 'fail'
             res = self.backtracking_search_optimized_id_min_max(problem)
+
             if self.max_depth >= len(self.first_problem.boxList):
                 return 'fail'
         return res
